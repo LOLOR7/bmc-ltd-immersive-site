@@ -345,6 +345,7 @@ export default function BootLoader() {
       aria-label="Preparing immersive experience"
       style={overlayStyle}
     >
+      {/* Mobile readability overrides — see globals.css boot-loader section */}
       <div className="boot-loader__inner">
         <img
           src={LOGO_SRC}
