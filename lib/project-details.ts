@@ -265,29 +265,33 @@ export function getProjectHrefForExperience(
   return slug ? `/projects/${slug}` : undefined;
 }
 
-/** BootLoader décoratif — 1–2 images / projet, max 8, depuis les galeries existantes. */
-export const BOOT_LOADER_CAROUSEL_IMAGES: ProjectGalleryImage[] = (() => {
-  const slugs: ProjectSlug[] = [
-    "adma-cliff-house",
-    "bekish-6358",
-    "adma-527",
-    "adma-514",
-    "dusk",
-  ];
-  const picked: ProjectGalleryImage[] = [];
-
-  for (const slug of slugs) {
-    const gallery = PROJECT_GALLERIES[slug];
-    if (!gallery?.length) continue;
-
-    picked.push(gallery[0]);
-    if (picked.length >= 8) break;
-
-    if (gallery[1]) {
-      picked.push(gallery[1]);
-      if (picked.length >= 8) break;
-    }
-  }
-
-  return picked.slice(0, 8);
-})();
+/**
+ * BootLoader carousel — chemins vérifiés sur disque (public/projects/).
+ * Max 6, aucun placeholder, aucune frame scroll.
+ */
+export const BOOT_LOADER_CAROUSEL_IMAGES: ProjectGalleryImage[] = [
+  {
+    src: "/projects/adma-cliff-house/gallery-01.png",
+    alt: "Adma Cliff House",
+  },
+  {
+    src: "/projects/bekish-6358/gallery-01.png",
+    alt: "Bekish 6358",
+  },
+  {
+    src: "/projects/adma-527/gallery-01.png",
+    alt: "Adma 527",
+  },
+  {
+    src: "/projects/adma-514/gallery-01.png",
+    alt: "Adma 514",
+  },
+  {
+    src: "/projects/dusk/gallery-01.png",
+    alt: "Dusk",
+  },
+  {
+    src: "/projects/bekish-6358/gallery-02.png",
+    alt: "Bekish 6358",
+  },
+];

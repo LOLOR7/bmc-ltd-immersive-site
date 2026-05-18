@@ -482,8 +482,7 @@ body.boot-loading {
   height: clamp(4.5rem, 13vw, 6.25rem);
   overflow: hidden;
   border-radius: 3px;
-  border: 1px solid rgba(244, 240, 232, 0.14);
-  background: rgba(0, 0, 0, 0.45);
+  background: transparent;
 }
 
 .boot-loader__carousel-card img {
