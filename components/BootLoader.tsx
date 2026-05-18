@@ -30,7 +30,7 @@
 import BootLoaderProjectCarousel from "@/components/BootLoaderProjectCarousel";
 import { BOOT_LOADER_CAROUSEL_IMAGES } from "@/lib/project-details";
 import { useEffect, useRef, useState } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, UIEvent } from "react";
 
 const STORAGE_KEY = "bmc-loader-seen";
 const OVERLAY_ID = "bmc-boot-loader";
@@ -172,7 +172,22 @@ export default function BootLoader() {
   const [visible, setVisible] = useState<boolean>(true);
   const [fading, setFading] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
+  const [activeStory, setActiveStory] = useState<number>(0);
   const closedRef = useRef(false);
+  const storyTrackRef = useRef<HTMLDivElement | null>(null);
+
+  const handleStoryScroll = (event: UIEvent<HTMLDivElement>) => {
+    const el = event.currentTarget;
+    const width = el.clientWidth || 1;
+    const next = Math.round(el.scrollLeft / width);
+    if (next !== activeStory) setActiveStory(next);
+  };
+
+  const goToStory = (index: number) => {
+    const el = storyTrackRef.current;
+    if (!el) return;
+    el.scrollTo({ left: index * el.clientWidth, behavior: "smooth" });
+  };
 
   useEffect(() => {
     if (hasSeenLoader()) {
@@ -349,12 +364,42 @@ export default function BootLoader() {
           Preparing your private architectural experience
         </p>
 
-        <div className="boot-loader__story" aria-label="About BMC Development">
-          {CLIENT_TEXTS.map((paragraph) => (
-            <p key={paragraph} className="boot-loader__story-paragraph">
-              {paragraph}
-            </p>
-          ))}
+        <div
+          className="boot-loader__story"
+          aria-label="About BMC Development"
+        >
+          <div
+            ref={storyTrackRef}
+            className="boot-loader__story-slider"
+            onScroll={handleStoryScroll}
+          >
+            <div className="boot-loader__story-track">
+              {CLIENT_TEXTS.map((paragraph) => (
+                <div key={paragraph} className="boot-loader__story-slide">
+                  <p className="boot-loader__story-paragraph">{paragraph}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="boot-loader__story-dots" aria-hidden="true">
+            {CLIENT_TEXTS.map((paragraph, index) => (
+              <button
+                key={paragraph}
+                type="button"
+                className={
+                  "boot-loader__story-dot" +
+                  (index === activeStory
+                    ? " boot-loader__story-dot--active"
+                    : "")
+                }
+                onClick={() => goToStory(index)}
+                aria-label={`Go to slide ${index + 1}`}
+              />
+            ))}
+          </div>
+
+          <p className="boot-loader__story-hint">Swipe to read more</p>
         </div>
 
         <BootLoaderProjectCarousel images={BOOT_LOADER_CAROUSEL_IMAGES} />
