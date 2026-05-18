@@ -19,7 +19,7 @@
  *
  *  Close: (min visible AND preload done) OR max wall-clock elapsed.
  *    Dev  — min 2 s, max 8 s
- *    Prod — min 8 s, max 75 s
+ *    Prod — min 30 s, max 75 s
  *
  *  Wall-clock watchdog + visibilitychange guard against Safari background-tab
  *  timer throttling (setTimeout may not fire while the tab is inactive).
@@ -41,7 +41,7 @@ const PRELOAD_CONCURRENCY = 3;
 const WATCHDOG_MS = 500;
 
 const isDev = process.env.NODE_ENV === "development";
-const MIN_VISIBLE_MS = isDev ? 2000 : 8000;
+const MIN_VISIBLE_MS = isDev ? 2000 : 30000;
 const MAX_DURATION_MS = isDev ? 8000 : 75000;
 
 type CloseReason = "preload" | "timeout" | "visibility" | "watchdog";

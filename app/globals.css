@@ -365,11 +365,11 @@ body.boot-loading {
 
 .boot-loader__brand-logo {
   display: block;
-  width: 160px;
-  max-width: 45vw;
+  width: 200px;
+  max-width: 55vw;
   height: auto;
   object-fit: contain;
-  margin: 0 0 0.35rem;
+  margin: 0 auto 0.35rem;
   opacity: 0.95;
   flex-shrink: 0;
 }
@@ -444,8 +444,8 @@ body.boot-loading {
 
 .boot-loader__carousel {
   width: 100%;
-  max-width: min(36rem, 100%);
-  margin: 0.75rem 0 0;
+  max-width: min(52rem, 100%);
+  margin: 1rem 0 0;
   flex-shrink: 0;
 }
 
@@ -471,17 +471,17 @@ body.boot-loading {
 
 .boot-loader__carousel-track {
   display: flex;
-  gap: 0.65rem;
+  gap: 0.85rem;
   width: max-content;
   padding: 0.15rem 0.25rem;
 }
 
 .boot-loader__carousel-card {
   flex: 0 0 auto;
-  width: clamp(7.5rem, 22vw, 10.5rem);
-  height: clamp(4.5rem, 13vw, 6.25rem);
+  width: clamp(150px, 28vw, 250px);
+  height: clamp(110px, 16vh, 170px);
   overflow: hidden;
-  border-radius: 3px;
+  border-radius: 4px;
   background: transparent;
 }
 
@@ -573,8 +573,8 @@ body.boot-loading {
 
 @media (max-width: 768px) {
   .boot-loader__brand-logo {
-    width: 150px;
-    max-width: 45vw;
+    width: 180px;
+    max-width: 55vw;
   }
 
   .boot-loader__story {
@@ -591,8 +591,8 @@ body.boot-loading {
   }
 
   .boot-loader__carousel-card {
-    width: clamp(6.75rem, 42vw, 9rem);
-    height: clamp(4.25rem, 26vw, 5.5rem);
+    width: clamp(150px, 40vw, 190px);
+    height: clamp(110px, 14vh, 140px);
   }
 }
 
