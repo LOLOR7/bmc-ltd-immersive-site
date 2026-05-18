@@ -337,15 +337,18 @@ body.boot-loading {
   flex-direction: column;
   align-items: center;
   gap: 0.65rem;
-  width: min(36rem, 88vw);
+  width: min(38rem, 94vw);
+  max-width: 100%;
   text-align: center;
   padding: clamp(1.25rem, 4vw, 2.25rem) clamp(1rem, 4vw, 1.75rem);
+  overflow-x: hidden;
 }
 
 .boot-loader__logo {
-  width: clamp(72px, 14vw, 108px);
+  width: clamp(95px, 11vw, 120px);
   height: auto;
-  margin-bottom: 1.25rem;
+  object-fit: contain;
+  margin-bottom: 1.15rem;
   opacity: 0.95;
 }
 
@@ -367,22 +370,37 @@ body.boot-loading {
   line-height: 1.5;
 }
 
-.boot-loader__rotator {
-  margin: 2rem 0 1.75rem;
-  min-height: clamp(5.25rem, 14vw, 6.75rem);
-  width: 100%;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
+.boot-loader__story {
+  margin: 1.75rem 0 0;
+  width: min(36rem, 94vw);
+  max-width: 100%;
+  max-height: 170px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(244, 240, 232, 0.28) transparent;
+  text-align: center;
+}
+
+.boot-loader__story::-webkit-scrollbar {
+  width: 4px;
+}
+
+.boot-loader__story::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(244, 240, 232, 0.28);
 }
 
 .boot-loader__rotator-text {
   margin: 0;
-  font-size: clamp(0.78rem, 1.6vw, 0.92rem);
+  padding: 0 0.25rem 0.35rem;
+  font-size: 1rem;
   line-height: 1.7;
   letter-spacing: 0.015em;
-  color: rgba(244, 240, 232, 0.78);
-  max-width: 34rem;
+  color: rgba(244, 240, 232, 0.82);
+  max-width: 100%;
   animation: boot-loader-text-in 0.7s cubic-bezier(0.16, 0.84, 0.32, 1) forwards;
 }
 
@@ -397,9 +415,15 @@ body.boot-loading {
   }
 }
 
+.boot-loader__progress {
+  width: min(22rem, 86vw);
+  max-width: 100%;
+  margin-top: clamp(48px, 7vh, 80px);
+}
+
 .boot-loader__status {
-  width: min(22rem, 80vw);
-  margin: 0.5rem 0 1.5rem;
+  width: 100%;
+  margin: 0;
 }
 
 .boot-loader__status-label {
@@ -426,7 +450,7 @@ body.boot-loading {
 }
 
 .boot-loader__hint {
-  margin: 1rem 0 0;
+  margin: 1.05rem 0 0;
   font-size: clamp(0.62rem, 1.3vw, 0.7rem);
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -442,60 +466,31 @@ body.boot-loading {
   max-width: 24rem;
 }
 
-/* BootLoader — mobile readability (logo, scrollable copy, lower progress block) */
+/* BootLoader — mobile readability */
 @media (max-width: 767px) {
   .boot-loader__inner {
-    width: min(36rem, 92vw);
     gap: 0.5rem;
-    padding-top: clamp(1.35rem, 5vw, 2rem);
-    padding-bottom: clamp(1rem, 3vw, 1.5rem);
+    padding-top: clamp(1.25rem, 5vw, 1.75rem);
+    padding-bottom: clamp(1rem, 3vh, 1.35rem);
   }
 
   .boot-loader__logo {
-    width: clamp(100px, 26vw, 122px);
-    margin-bottom: 1rem;
+    width: clamp(90px, 28vw, 110px);
+    margin-bottom: 0.85rem;
   }
 
-  .boot-loader__rotator {
-    margin: 1.5rem 0 0;
-    min-height: unset;
-    max-height: min(12.5rem, 32vh);
-    width: 100%;
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(244, 240, 232, 0.22) transparent;
-  }
-
-  .boot-loader__rotator::-webkit-scrollbar {
-    width: 3px;
-  }
-
-  .boot-loader__rotator::-webkit-scrollbar-thumb {
-    border-radius: 999px;
-    background: rgba(244, 240, 232, 0.22);
+  .boot-loader__story {
+    margin-top: 1.35rem;
+    max-height: 150px;
   }
 
   .boot-loader__rotator-text {
-    font-size: 0.875rem;
-    line-height: 1.8;
-    max-width: 100%;
-    padding: 0 0.2rem 0.15rem;
+    font-size: 0.9375rem;
+    line-height: 1.65;
   }
 
-  .boot-loader__status {
-    margin: 2.35rem 0 1.15rem;
-    width: min(22rem, 86vw);
-  }
-
-  .boot-loader__hint {
-    margin-top: 1.1rem;
-  }
-
-  .boot-loader__sub {
-    margin-top: 0.55rem;
+  .boot-loader__progress {
+    margin-top: clamp(56px, 8vh, 96px);
   }
 }
 

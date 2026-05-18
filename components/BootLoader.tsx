@@ -358,28 +358,30 @@ export default function BootLoader() {
           Preparing your private architectural experience
         </p>
 
-        <div ref={rotatorRef} className="boot-loader__rotator" aria-live="polite">
+        <div ref={rotatorRef} className="boot-loader__story" aria-live="polite">
           <p key={textIndex} className="boot-loader__rotator-text">
             {CLIENT_TEXTS[textIndex]}
           </p>
         </div>
 
-        <div className="boot-loader__status">
-          <p className="boot-loader__status-label">Loading first sequence</p>
-          <div className="boot-loader__track" aria-hidden="true">
-            <span
-              className="boot-loader__bar"
-              style={{ width: `${Math.round(progress * 100)}%` }}
-            />
+        <div className="boot-loader__progress">
+          <div className="boot-loader__status">
+            <p className="boot-loader__status-label">Loading first sequence</p>
+            <div className="boot-loader__track" aria-hidden="true">
+              <span
+                className="boot-loader__bar"
+                style={{ width: `${Math.round(progress * 100)}%` }}
+              />
+            </div>
           </div>
-        </div>
 
-        <p className="boot-loader__hint">
-          This first load may take up to one minute.
-        </p>
-        <p className="boot-loader__sub">
-          Please keep this page open while the visuals are being prepared.
-        </p>
+          <p className="boot-loader__hint">
+            This first load may take up to one minute.
+          </p>
+          <p className="boot-loader__sub">
+            Please keep this page open while the visuals are being prepared.
+          </p>
+        </div>
       </div>
     </div>
   );
