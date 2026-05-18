@@ -287,6 +287,98 @@ body {
   text-align: center;
 }
 
+/* —— First-visit boot loader (frames preload) —— */
+body.boot-loading {
+  overflow: hidden;
+}
+
+.experience-boot {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: #050505;
+  opacity: 1;
+  transition: opacity 0.52s ease;
+  pointer-events: all;
+}
+
+.experience-boot--fading {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.experience-boot__poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0.42;
+  filter: brightness(0.88) contrast(1.04) saturate(0.92);
+  transform: translateZ(0);
+}
+
+.experience-boot__veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(5, 5, 5, 0.55) 0%,
+    rgba(5, 5, 5, 0.72) 55%,
+    rgba(5, 5, 5, 0.88) 100%
+  );
+}
+
+.experience-boot__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  padding-bottom: max(2.5rem, env(safe-area-inset-bottom));
+  width: min(18rem, 88vw);
+}
+
+.experience-boot__label {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.38em;
+  text-transform: uppercase;
+  color: rgba(244, 240, 232, 0.72);
+}
+
+.experience-boot__hint {
+  margin: 0;
+  font-size: 0.58rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(244, 240, 232, 0.38);
+}
+
+.experience-boot__track {
+  margin-top: 0.35rem;
+  width: 100%;
+  height: 1px;
+  background: rgba(244, 240, 232, 0.14);
+  overflow: hidden;
+  transform-origin: left center;
+}
+
+.experience-boot__bar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: rgba(244, 240, 232, 0.55);
+  transform: scaleX(0.04);
+  transform-origin: left center;
+  transition: transform 0.35s ease;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .frame-image {
     transform: none;
@@ -294,5 +386,13 @@ body {
 
   .animate-pulse {
     animation: none;
+  }
+
+  .experience-boot {
+    transition: none;
+  }
+
+  .experience-boot__bar {
+    transition: none;
   }
 }

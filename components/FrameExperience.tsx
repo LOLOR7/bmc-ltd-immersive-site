@@ -2,20 +2,24 @@
 
 import MetricPill from "@/components/MetricPill";
 import type { FrameExperienceConfig } from "@/lib/experiences/types";
+import {
+  canAutoPreload,
+  getFrameSrc,
+  getScrollPreloadIndices,
+  isDev,
+  isUrlLoaded,
+  preloadFrame,
+  preloadUrl,
+} from "@/lib/frame-preload";
 import type { SceneContent } from "@/lib/scenes";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ChevronDown } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const INITIAL_PRELOAD = 5;
-const NEARBY_RADIUS = 4;
-
 type PanelState = "hero" | number;
 
-export function getFrameSrc(framePath: string, index: number): string {
-  return `${framePath}${String(index).padStart(4, "0")}.jpg`;
-}
+export { getFrameSrc };
 
 function resolvePanel(
   progress: number,
@@ -110,9 +114,7 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
     surfaceLine,
     location,
     scenes,
-    framePath,
     mobileFramePath,
-    totalFrames,
     scrollHeightVh,
     extractHint,
     fallbackMessage,
@@ -126,12 +128,11 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
   const lastGoodFrameRef = useRef(1);
   const pendingFrameRef = useRef(0);
   const displayedSrcRef = useRef("");
-  const cacheRef = useRef<Map<number, HTMLImageElement>>(new Map());
-  const cachesByPathRef = useRef<Map<string, Map<number, HTMLImageElement>>>(
-    new Map(),
-  );
 
   const [framesAvailable, setFramesAvailable] = useState(false);
+  const [loadState, setLoadState] = useState<"pending" | "ready" | "error">(
+    "pending",
+  );
   const [activePanel, setActivePanel] = useState<PanelState>("hero");
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [useMobileFrames, setUseMobileFrames] = useState(false);
@@ -144,156 +145,65 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
   const activeFramePath = activeFrameConfig.framePath;
   const initialSrc = getFrameSrc(activeFramePath, firstFrame);
 
-  const getActiveCache = useCallback((): Map<number, HTMLImageElement> => {
-    if (!strictAntiFlicker) {
-      return cacheRef.current;
-    }
-    let cache = cachesByPathRef.current.get(activeFramePath);
-    if (!cache) {
-      cache = new Map();
-      cachesByPathRef.current.set(activeFramePath, cache);
-    }
-    return cache;
-  }, [strictAntiFlicker, activeFramePath]);
+  const swapWhenDecoded = useCallback((index: number, src: string) => {
+    if (pendingFrameRef.current !== index) return;
 
-  const preloadFrame = useCallback(
-    (index: number) => {
-      if (index < firstFrame || index > lastFrame) {
-        return;
+    const el = imgRef.current;
+    if (!el) return;
+
+    const commit = () => {
+      if (pendingFrameRef.current !== index) return;
+      if (el.src !== src) {
+        el.src = src;
       }
-      const cache = getActiveCache();
-      if (cache.has(index)) {
-        return;
-      }
-      const img = new Image();
-      img.decoding = "async";
-      img.src = getFrameSrc(activeFramePath, index);
-      cache.set(index, img);
-    },
-    [activeFramePath, firstFrame, lastFrame, getActiveCache],
-  );
+      displayedSrcRef.current = src;
+      lastGoodFrameRef.current = index;
+      frameRef.current = index;
+    };
 
-  const applyFrameStrict = useCallback(
-    (index: number) => {
-      const clamped = Math.min(lastFrame, Math.max(firstFrame, index));
-      pendingFrameRef.current = clamped;
-
-      const src = getFrameSrc(activeFramePath, clamped);
-      const cache = getActiveCache();
-      const cached = cache.get(clamped);
-
-      const swapTo = (frame: number, url: string, img: HTMLImageElement) => {
-        if (pendingFrameRef.current !== frame) return;
-        if (!img.complete || img.naturalWidth <= 0) return;
-
-        const el = imgRef.current;
-        if (!el) return;
-
-        const commitSwap = () => {
-          if (pendingFrameRef.current !== frame) return;
-          if (el.src !== url) {
-            el.src = url;
-          }
-          displayedSrcRef.current = url;
-          lastGoodFrameRef.current = frame;
-          frameRef.current = frame;
-        };
-
-        void img.decode?.().then(commitSwap).catch(commitSwap);
-      };
-
-      if (cached?.complete && cached.naturalWidth > 0) {
-        swapTo(clamped, src, cached);
-        return;
-      }
-
-      const img = cached ?? new Image();
-      if (!cached) {
-        img.decoding = "async";
-        cache.set(clamped, img);
-        img.src = src;
-      }
-
-      img.onload = () => {
-        if (pendingFrameRef.current !== clamped) return;
-        swapTo(clamped, src, img);
-      };
-      img.onerror = () => {
-        if (pendingFrameRef.current !== clamped) return;
-        const fallback = lastGoodFrameRef.current;
-        if (fallback < firstFrame || fallback > lastFrame) return;
-        const fallbackSrc = getFrameSrc(activeFramePath, fallback);
-        const fallbackImg = cache.get(fallback);
-        if (fallbackImg?.complete && fallbackImg.naturalWidth > 0) {
-          swapTo(fallback, fallbackSrc, fallbackImg);
-        }
-      };
-    },
-    [activeFramePath, firstFrame, lastFrame, getActiveCache],
-  );
-
-  const preloadNearby = useCallback(
-    (index: number) => {
-      for (let i = index - NEARBY_RADIUS; i <= index + NEARBY_RADIUS; i++) {
-        preloadFrame(i);
-      }
-    },
-    [preloadFrame],
-  );
+    const img = new Image();
+    img.decoding = "async";
+    img.addEventListener(
+      "load",
+      () => {
+        void img.decode?.().then(commit).catch(commit);
+      },
+      { once: true },
+    );
+    img.addEventListener("error", () => undefined, { once: true });
+    img.src = src;
+  }, []);
 
   const applyFrame = useCallback(
     (index: number) => {
-      if (strictAntiFlicker) {
-        applyFrameStrict(index);
+      const clamped = Math.min(lastFrame, Math.max(firstFrame, index));
+      pendingFrameRef.current = clamped;
+      const src = getFrameSrc(activeFramePath, clamped);
+
+      if (isUrlLoaded(src)) {
+        swapWhenDecoded(clamped, src);
         return;
       }
 
-      const src = getFrameSrc(activeFramePath, index);
-      const cached = cacheRef.current.get(index);
-
-      const commit = (frame: number, url: string) => {
-        const el = imgRef.current;
-        if (!el) return;
-
-        const apply = () => {
-          if (el.src !== url) el.src = url;
-          lastGoodFrameRef.current = frame;
-          frameRef.current = frame;
-        };
-
-        const decoded = cacheRef.current.get(index);
-        if (decoded?.complete && decoded.naturalWidth > 0) {
-          void decoded.decode?.().then(apply).catch(apply);
-          return;
-        }
-        apply();
-      };
-
-      if (cached?.complete && cached.naturalWidth > 0) {
-        commit(index, src);
-        return;
-      }
-
-      const img = cached ?? new Image();
-      if (!cached) {
-        img.decoding = "async";
-        img.src = src;
-        cacheRef.current.set(index, img);
-      }
-
-      img.onload = () => {
-        void img.decode?.().then(() => commit(index, src)).catch(() => commit(index, src));
-      };
-      img.onerror = () => {
-        if (lastGoodFrameRef.current > 0) {
-          commit(
-            lastGoodFrameRef.current,
-            getFrameSrc(activeFramePath, lastGoodFrameRef.current),
-          );
-        }
-      };
+      void preloadUrl(src, true).then((ok) => {
+        if (!ok || pendingFrameRef.current !== clamped) return;
+        swapWhenDecoded(clamped, src);
+      });
     },
-    [activeFramePath, strictAntiFlicker, applyFrameStrict],
+    [activeFramePath, firstFrame, lastFrame, swapWhenDecoded],
+  );
+
+  const preloadScrollWindow = useCallback(
+    (current: number) => {
+      if (isDev || !canAutoPreload()) return;
+
+      const indices = getScrollPreloadIndices(current, firstFrame, lastFrame);
+      for (const index of indices) {
+        if (index === current) continue;
+        void preloadFrame(activeFramePath, index, false);
+      }
+    },
+    [activeFramePath, firstFrame, lastFrame],
   );
 
   useEffect(() => {
@@ -310,15 +220,16 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
       return;
     }
 
+    if (isDev) {
+      setUseMobileFrames(true);
+      return;
+    }
+
     let cancelled = false;
-    const probe = new Image();
-    probe.src = getFrameSrc(mobileFramePath, config.startFrame ?? 1);
-    probe.onload = () => {
-      if (!cancelled) setUseMobileFrames(true);
-    };
-    probe.onerror = () => {
-      if (!cancelled) setUseMobileFrames(false);
-    };
+    const probeSrc = getFrameSrc(mobileFramePath, config.startFrame ?? 1);
+    void preloadUrl(probeSrc, true).then((ok) => {
+      if (!cancelled) setUseMobileFrames(ok);
+    });
 
     return () => {
       cancelled = true;
@@ -328,15 +239,9 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
   useEffect(() => {
     let cancelled = false;
 
-    if (!strictAntiFlicker) {
-      cacheRef.current.clear();
-      setFramesAvailable(false);
-    }
-
-    const probe = new Image();
-    probe.src = getFrameSrc(activeFramePath, firstFrame);
-    probe.onload = () => {
+    const activateAt = (index: number) => {
       if (cancelled) return;
+      setLoadState("ready");
       setFramesAvailable(true);
 
       if (strictAntiFlicker && displayedSrcRef.current) {
@@ -344,20 +249,38 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
           progressRef.current,
           activeFrameConfig,
         );
-        pendingFrameRef.current = remapped;
         applyFrame(remapped);
       } else {
-        pendingFrameRef.current = firstFrame;
-        frameRef.current = firstFrame;
-        lastGoodFrameRef.current = firstFrame;
-        applyFrame(firstFrame);
+        applyFrame(index);
       }
 
       ScrollTrigger.refresh();
     };
-    probe.onerror = () => {
-      if (!cancelled) setFramesAvailable(false);
-    };
+
+    const firstSrc = getFrameSrc(activeFramePath, firstFrame);
+
+    if (isUrlLoaded(firstSrc)) {
+      activateAt(firstFrame);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (!strictAntiFlicker) {
+      setFramesAvailable(false);
+      setLoadState("pending");
+    }
+
+    void preloadUrl(firstSrc, true).then((ok) => {
+      if (cancelled) return;
+      if (ok) {
+        activateAt(firstFrame);
+        return;
+      }
+      setLoadState("error");
+      setFramesAvailable(false);
+    });
+
     return () => {
       cancelled = true;
     };
@@ -372,9 +295,10 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
 
   useEffect(() => {
     if (!strictAntiFlicker || !framesAvailable) return;
-    const progress = progressRef.current;
-    const remapped = frameIndexFromProgress(progress, activeFrameConfig);
-    pendingFrameRef.current = remapped;
+    const remapped = frameIndexFromProgress(
+      progressRef.current,
+      activeFrameConfig,
+    );
     applyFrame(remapped);
   }, [
     strictAntiFlicker,
@@ -383,23 +307,6 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
     activeFrameConfig,
     applyFrame,
   ]);
-
-  useEffect(() => {
-    if (!framesAvailable) return;
-
-    const preloadEnd = Math.min(firstFrame + INITIAL_PRELOAD - 1, lastFrame);
-    for (let i = firstFrame; i <= preloadEnd; i++) preloadFrame(i);
-
-    let i = preloadEnd + 1;
-    const batch = () => {
-      const end = Math.min(i + 12, lastFrame);
-      for (; i <= end; i++) preloadFrame(i);
-      if (i <= lastFrame) {
-        window.requestIdleCallback?.(batch) ?? window.setTimeout(batch, 40);
-      }
-    };
-    batch();
-  }, [framesAvailable, preloadFrame, firstFrame, lastFrame]);
 
   useEffect(() => {
     gsap.registerPlugin(ScrollTrigger);
@@ -440,7 +347,7 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
 
       if (framesAvailable && nextFrame !== lastTickFrame) {
         lastTickFrame = nextFrame;
-        preloadNearby(nextFrame);
+        preloadScrollWindow(nextFrame);
         if (nextFrame !== frameRef.current) {
           applyFrame(nextFrame);
         }
@@ -456,7 +363,7 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
       window.removeEventListener("resize", onResize);
       window.removeEventListener("orientationchange", onResize);
     };
-  }, [framesAvailable, config, activeFrameConfig, preloadNearby, applyFrame]);
+  }, [framesAvailable, config, activeFrameConfig, preloadScrollWindow, applyFrame]);
 
   return (
     <section
@@ -539,7 +446,7 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
           )}
         </div>
 
-        {!framesAvailable && (
+        {loadState === "error" && (
           <div className="frame-fallback">
             <p className="text-center text-[0.65rem] leading-relaxed tracking-[0.2em] text-cream/35 uppercase">
               {fallbackMessage ?? `Frames not found. Run ${extractHint}.`}
