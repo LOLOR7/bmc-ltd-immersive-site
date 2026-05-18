@@ -97,7 +97,7 @@ export default function SiteMobileNavMenu() {
                 aria-controls="mobile-nav-projects"
                 onClick={() => setProjectsOpen((open) => !open)}
               >
-                <span>Nos projets</span>
+                <span>Our Projects</span>
                 <ChevronDown
                   className={`mobile-nav__chevron${projectsOpen ? " mobile-nav__chevron--open" : ""}`}
                   strokeWidth={1.5}

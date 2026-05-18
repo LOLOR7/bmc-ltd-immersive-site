@@ -264,3 +264,30 @@ export function getProjectHrefForExperience(
   const slug = getProjectSlugForExperience(experienceId);
   return slug ? `/projects/${slug}` : undefined;
 }
+
+/** BootLoader décoratif — 1–2 images / projet, max 8, depuis les galeries existantes. */
+export const BOOT_LOADER_CAROUSEL_IMAGES: ProjectGalleryImage[] = (() => {
+  const slugs: ProjectSlug[] = [
+    "adma-cliff-house",
+    "bekish-6358",
+    "adma-527",
+    "adma-514",
+    "dusk",
+  ];
+  const picked: ProjectGalleryImage[] = [];
+
+  for (const slug of slugs) {
+    const gallery = PROJECT_GALLERIES[slug];
+    if (!gallery?.length) continue;
+
+    picked.push(gallery[0]);
+    if (picked.length >= 8) break;
+
+    if (gallery[1]) {
+      picked.push(gallery[1]);
+      if (picked.length >= 8) break;
+    }
+  }
+
+  return picked.slice(0, 8);
+})();

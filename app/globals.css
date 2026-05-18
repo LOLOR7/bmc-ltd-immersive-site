@@ -442,10 +442,81 @@ body.boot-loading {
   margin-bottom: 0.25rem;
 }
 
+.boot-loader__carousel {
+  width: 100%;
+  max-width: min(36rem, 100%);
+  margin: 0.75rem 0 0;
+  flex-shrink: 0;
+}
+
+.boot-loader__carousel-viewport {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    #000 6%,
+    #000 94%,
+    transparent 100%
+  );
+}
+
+.boot-loader__carousel-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.boot-loader__carousel-track {
+  display: flex;
+  gap: 0.65rem;
+  width: max-content;
+  padding: 0.15rem 0.25rem;
+}
+
+.boot-loader__carousel-card {
+  flex: 0 0 auto;
+  width: clamp(7.5rem, 22vw, 10.5rem);
+  height: clamp(4.5rem, 13vw, 6.25rem);
+  overflow: hidden;
+  border-radius: 3px;
+  border: 1px solid rgba(244, 240, 232, 0.14);
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.boot-loader__carousel-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .boot-loader__carousel-viewport {
+    overflow: hidden;
+  }
+
+  .boot-loader__carousel-track {
+    animation: boot-loader-carousel-marquee 52s linear infinite;
+  }
+}
+
+@keyframes boot-loader-carousel-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 .boot-loader__spacer {
   flex: 1 1 auto;
   width: 100%;
-  min-height: 2rem;
+  min-height: 1rem;
 }
 
 .boot-loader__progress {
@@ -518,6 +589,11 @@ body.boot-loading {
 
   .boot-loader__progress {
     margin-top: clamp(90px, 12vh, 150px);
+  }
+
+  .boot-loader__carousel-card {
+    width: clamp(6.75rem, 42vw, 9rem);
+    height: clamp(4.25rem, 26vw, 5.5rem);
   }
 }
 
@@ -778,12 +854,128 @@ body.boot-loading {
   background: rgba(0, 0, 0, 0.25);
 }
 
+.project-page__gallery-trigger {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.project-page__gallery-trigger:focus-visible {
+  outline: 1px solid rgba(244, 240, 232, 0.45);
+  outline-offset: 2px;
+}
+
 .project-page__gallery img {
   width: 100%;
   height: auto;
   display: block;
   object-fit: cover;
   vertical-align: middle;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.project-page__gallery-trigger:hover img {
+  opacity: 0.92;
+  transform: scale(1.02);
+}
+
+.gallery-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(1rem, env(safe-area-inset-top))
+    max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom))
+    max(1rem, env(safe-area-inset-left));
+  box-sizing: border-box;
+}
+
+.gallery-lightbox__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.92);
+  cursor: pointer;
+}
+
+.gallery-lightbox__close {
+  position: absolute;
+  top: max(1rem, env(safe-area-inset-top));
+  right: max(1rem, env(safe-area-inset-right));
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid rgba(244, 240, 232, 0.2);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(244, 240, 232, 0.85);
+  cursor: pointer;
+}
+
+.gallery-lightbox__nav {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid rgba(244, 240, 232, 0.2);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(244, 240, 232, 0.85);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.gallery-lightbox__nav--prev {
+  left: max(0.75rem, env(safe-area-inset-left));
+}
+
+.gallery-lightbox__nav--next {
+  right: max(0.75rem, env(safe-area-inset-right));
+}
+
+.gallery-lightbox__figure {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: min(92vw, 72rem);
+  max-height: 88vh;
+  margin: 0;
+}
+
+.gallery-lightbox__image {
+  max-width: 100%;
+  max-height: calc(88vh - 2.5rem);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  object-position: center;
+}
+
+.gallery-lightbox__caption {
+  max-width: min(36rem, 90vw);
+  font-size: 0.62rem;
+  line-height: 1.55;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+  color: rgba(244, 240, 232, 0.5);
 }
 
 .project-page__gallery-placeholder {

@@ -1,3 +1,4 @@
+import ProjectGallery from "@/components/ProjectGallery";
 import ProjectPageHeader from "@/components/ProjectPageHeader";
 import type { ProjectPageData } from "@/lib/project-details";
 
@@ -36,14 +37,7 @@ export default function ProjectPageContent({ project }: ProjectPageContentProps)
           aria-label="Project gallery"
         >
           {project.gallery.length > 0 ? (
-            <ul className="project-page__gallery">
-              {project.gallery.map((image) => (
-                <li key={image.src}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={image.src} alt={image.alt} loading="lazy" />
-                </li>
-              ))}
-            </ul>
+            <ProjectGallery images={project.gallery} />
           ) : (
             <div className="project-page__gallery-placeholder">
               <p>{project.galleryPlaceholder}</p>

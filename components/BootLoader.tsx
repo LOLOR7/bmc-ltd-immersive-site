@@ -27,6 +27,8 @@
  *  React owns the overlay node — never removeChild / el.remove().
  */
 
+import BootLoaderProjectCarousel from "@/components/BootLoaderProjectCarousel";
+import { BOOT_LOADER_CAROUSEL_IMAGES } from "@/lib/project-details";
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 
@@ -355,6 +357,8 @@ export default function BootLoader() {
             </p>
           ))}
         </div>
+
+        <BootLoaderProjectCarousel images={BOOT_LOADER_CAROUSEL_IMAGES} />
 
         <div className="boot-loader__spacer" aria-hidden="true" />
 
