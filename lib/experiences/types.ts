@@ -36,4 +36,6 @@ export type FrameExperienceConfig = {
   sceneBreakpoints: SceneBreakpoint[];
   /** Stricter swap: only update <img> after decode; ignore stale loads (Dusk only) */
   strictAntiFlicker?: boolean;
+  /** Mobile-only eager preload hints (specific frame indices to warm up before scroll) */
+  mobilePreloadHints?: number[];
 };

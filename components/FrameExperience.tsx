@@ -413,6 +413,13 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
   }, [framesAvailable, preloadFrame, firstFrame, lastFrame]);
 
   useEffect(() => {
+    if (!framesAvailable || !useMobileFrames) return;
+    const hints = config.mobilePreloadHints;
+    if (!hints?.length) return;
+    for (const idx of hints) preloadFrame(idx);
+  }, [framesAvailable, useMobileFrames, config, preloadFrame]);
+
+  useEffect(() => {
     gsap.registerPlugin(ScrollTrigger);
 
     const section = sectionRef.current;

@@ -22,6 +22,8 @@ export const ADMA_EXPERIENCE: FrameExperienceConfig = {
   mobileFramePath: "/frames-mobile/adma-cliff-house-9-6/frame_",
   totalFrames: 577,
   mobileTotalFrames: 433,
+  /** Warm scene 2→3 transition on mobile (~frame 289). */
+  mobilePreloadHints: Array.from({ length: 56 }, (_, i) => 260 + i),
   scrollHeightVh: 300,
   extractHint: "npm run extract:frames",
   heroEnd: 0.1,
