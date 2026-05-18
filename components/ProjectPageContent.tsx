@@ -46,6 +46,26 @@ export default function ProjectPageContent({ project }: ProjectPageContentProps)
           )}
         </section>
 
+        <section
+          className="project-page__gallery-section"
+          aria-label="Project gallery"
+        >
+          {project.gallery.length > 0 ? (
+            <ul className="project-page__gallery">
+              {project.gallery.map((image) => (
+                <li key={image.src}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={image.src} alt={image.alt} loading="lazy" />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="project-page__gallery-placeholder">
+              <p>{project.galleryPlaceholder}</p>
+            </div>
+          )}
+        </section>
+
         <section className="project-page__section">
           <h2 className="project-page__section-label">Overview</h2>
           {project.overview.map((paragraph) => (
@@ -82,24 +102,6 @@ export default function ProjectPageContent({ project }: ProjectPageContentProps)
             </ul>
           </section>
         )}
-
-        <section className="project-page__section">
-          <h2 className="project-page__section-label">Gallery</h2>
-          {project.gallery.length > 0 ? (
-            <ul className="project-page__gallery">
-              {project.gallery.map((image) => (
-                <li key={image.src}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={image.src} alt={image.alt} loading="lazy" />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="project-page__gallery-placeholder">
-              <p>{project.galleryPlaceholder}</p>
-            </div>
-          )}
-        </section>
 
         <section className="project-page__cta">
           <a
