@@ -174,6 +174,8 @@ export default function BootLoader() {
   const [progress, setProgress] = useState<number>(0);
   const [activeStory, setActiveStory] = useState<number>(0);
   const closedRef = useRef(false);
+  const minVisibleReachedRef = useRef(false);
+  const preloadDoneRef = useRef(false);
   const storyTrackRef = useRef<HTMLDivElement | null>(null);
 
   const handleStoryScroll = (event: UIEvent<HTMLDivElement>) => {
@@ -191,7 +193,7 @@ export default function BootLoader() {
 
   useEffect(() => {
     if (hasSeenLoader()) {
-      if (isDev) console.log("[BootLoader] already seen — closing");
+      if (isDev) console.log("[BootLoader] skipped: already seen");
       closedRef.current = true;
       releaseBodyLock();
       setVisible(false);
@@ -209,12 +211,18 @@ export default function BootLoader() {
 
     const abortCtrl = new AbortController();
     const preloadUrlsList = buildPreloadUrls(PRELOAD_PLAN);
-    const t0 = performance.now();
-    let minReached = false;
-    let preloadDone = false;
+    const startTime = Date.now();
+    let minLogged = false;
     let loadedCount = 0;
 
-    const elapsedMs = () => performance.now() - t0;
+    const elapsedMs = () => Date.now() - startTime;
+
+    const canCloseNormally = () =>
+      minVisibleReachedRef.current &&
+      preloadDoneRef.current &&
+      elapsedMs() >= MIN_VISIBLE_MS;
+
+    const canForceClose = () => elapsedMs() >= MAX_DURATION_MS;
 
     const updateProgress = () => {
       const realProgress =
@@ -227,6 +235,32 @@ export default function BootLoader() {
 
     const close = (reason: CloseReason) => {
       if (closedRef.current) return;
+
+      const elapsed = elapsedMs();
+
+      if (reason === "preload" && !canCloseNormally()) {
+        if (isDev) {
+          console.log(
+            `[BootLoader] close blocked (${reason}): min=${minVisibleReachedRef.current} preload=${preloadDoneRef.current} elapsed=${Math.round(elapsed)}ms`,
+          );
+        }
+        return;
+      }
+
+      if (
+        (reason === "timeout" ||
+          reason === "visibility" ||
+          reason === "watchdog") &&
+        !canForceClose()
+      ) {
+        if (isDev) {
+          console.log(
+            `[BootLoader] close blocked (${reason}): elapsed=${Math.round(elapsed)}ms < max=${MAX_DURATION_MS}ms`,
+          );
+        }
+        return;
+      }
+
       closedRef.current = true;
       if (isDev) console.log(`[BootLoader] close called reason=${reason}`);
 
@@ -254,34 +288,46 @@ export default function BootLoader() {
       }, FADE_OUT_MS);
     };
 
-    const tryClose = () => {
-      if (minReached && preloadDone) {
+    const tryClose = (source: string) => {
+      if (canCloseNormally()) {
+        if (isDev) console.log(`[BootLoader] close conditions met (${source})`);
         close("preload");
       }
     };
 
+    const markMinVisibleIfDue = () => {
+      if (elapsedMs() >= MIN_VISIBLE_MS) {
+        if (!minVisibleReachedRef.current) {
+          minVisibleReachedRef.current = true;
+          if (isDev && !minLogged) {
+            console.log("[BootLoader] min visible reached");
+            minLogged = true;
+          }
+        }
+      }
+    };
+
     const evaluateWallClock = (source: "watchdog" | "visibility") => {
-      const elapsed = elapsedMs();
-      if (elapsed >= MIN_VISIBLE_MS) minReached = true;
-      if (elapsed >= MAX_DURATION_MS) {
+      markMinVisibleIfDue();
+      if (canForceClose()) {
         if (isDev) {
           console.log(
-            `[BootLoader] max timeout reached (${source}, ${Math.round(elapsed)}ms)`,
+            `[BootLoader] max timeout reached (${source}, ${Math.round(elapsedMs())}ms)`,
           );
         }
         close(source === "visibility" ? "visibility" : "watchdog");
         return true;
       }
-      tryClose();
+      tryClose(source);
       return false;
     };
 
     const progressInterval = window.setInterval(updateProgress, 200);
 
     const minTimer = window.setTimeout(() => {
-      minReached = true;
+      minVisibleReachedRef.current = true;
       if (isDev) console.log("[BootLoader] min visible reached");
-      tryClose();
+      tryClose("min-timer");
     }, MIN_VISIBLE_MS);
 
     const maxTimer = window.setTimeout(() => {
@@ -317,9 +363,10 @@ export default function BootLoader() {
       }
       updateProgress();
     }).then(() => {
-      preloadDone = true;
+      preloadDoneRef.current = true;
       if (isDev) console.log("[BootLoader] critical preload done");
-      tryClose();
+      markMinVisibleIfDue();
+      tryClose("preload-done");
     });
 
     return () => {
