@@ -350,7 +350,6 @@ export default function BootLoader() {
         </p>
 
         <div className="boot-loader__story" aria-label="About BMC Development">
-          <p className="boot-loader__story-hint">Scroll to read more</p>
           {CLIENT_TEXTS.map((paragraph) => (
             <p key={paragraph} className="boot-loader__story-paragraph">
               {paragraph}

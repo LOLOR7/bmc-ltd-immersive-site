@@ -398,35 +398,10 @@ body.boot-loading {
   margin: 1rem 0 0;
   width: 100%;
   max-width: min(36rem, 100%);
-  max-height: 200px;
-  padding-right: 10px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-  touch-action: pan-y;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(244, 240, 232, 0.35) transparent;
+  overflow: visible;
   text-align: center;
   flex-shrink: 0;
   box-sizing: border-box;
-}
-
-.boot-loader__story::-webkit-scrollbar {
-  width: 4px;
-}
-
-.boot-loader__story::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: rgba(244, 240, 232, 0.35);
-}
-
-.boot-loader__story-hint {
-  margin: 0 0 0.75rem;
-  font-size: 0.58rem;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: rgba(244, 240, 232, 0.38);
 }
 
 .boot-loader__story-paragraph {
@@ -478,10 +453,10 @@ body.boot-loading {
 
 .boot-loader__carousel-card {
   flex: 0 0 auto;
-  width: clamp(150px, 28vw, 250px);
-  height: clamp(110px, 16vh, 170px);
+  width: clamp(240px, 32vw, 360px);
+  height: clamp(160px, 22vh, 240px);
   overflow: hidden;
-  border-radius: 4px;
+  border-radius: 6px;
   background: transparent;
 }
 
@@ -577,10 +552,6 @@ body.boot-loading {
     max-width: 55vw;
   }
 
-  .boot-loader__story {
-    max-height: 170px;
-  }
-
   .boot-loader__story-paragraph {
     font-size: 15px;
     line-height: 1.7;
@@ -591,8 +562,8 @@ body.boot-loading {
   }
 
   .boot-loader__carousel-card {
-    width: clamp(150px, 40vw, 190px);
-    height: clamp(110px, 14vh, 140px);
+    width: clamp(210px, 68vw, 280px);
+    height: clamp(140px, 22vh, 190px);
   }
 }
 
