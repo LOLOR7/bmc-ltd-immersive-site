@@ -7,7 +7,7 @@ import type { SceneContent } from "@/lib/scenes";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ChevronDown } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const INITIAL_PRELOAD = 5;
 const NEARBY_RADIUS = 4;
@@ -144,7 +144,10 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [useMobileFrames, setUseMobileFrames] = useState(false);
 
-  const activeFrameConfig = buildActiveFrameConfig(config, useMobileFrames);
+  const activeFrameConfig = useMemo(
+    () => buildActiveFrameConfig(config, useMobileFrames),
+    [config, useMobileFrames],
+  );
   const { firstFrame, lastFrame } = getFrameBounds(
     activeFrameConfig,
     activeFrameConfig.totalFrames,
