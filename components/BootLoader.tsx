@@ -35,7 +35,6 @@ const OVERLAY_ID = "bmc-boot-loader";
 const LOGO_SRC = "/assets/bmc-logo-client-cream.png?v=1";
 
 const FADE_OUT_MS = 500;
-const TEXT_ROTATION_MS = 7000;
 const PRELOAD_CONCURRENCY = 3;
 const WATCHDOG_MS = 500;
 
@@ -171,9 +170,7 @@ export default function BootLoader() {
   const [visible, setVisible] = useState<boolean>(true);
   const [fading, setFading] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
-  const [textIndex, setTextIndex] = useState<number>(0);
   const closedRef = useRef(false);
-  const rotatorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (hasSeenLoader()) {
@@ -308,26 +305,17 @@ export default function BootLoader() {
       tryClose();
     });
 
-    const textTimer = window.setInterval(() => {
-      setTextIndex((i) => (i + 1) % CLIENT_TEXTS.length);
-    }, TEXT_ROTATION_MS);
-
     return () => {
       abortCtrl.abort();
       window.clearTimeout(minTimer);
       window.clearTimeout(maxTimer);
       window.clearInterval(progressInterval);
       window.clearInterval(watchdog);
-      window.clearInterval(textTimer);
       document.removeEventListener("visibilitychange", onVisibilityChange);
       releaseBodyLock();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    rotatorRef.current?.scrollTo({ top: 0 });
-  }, [textIndex]);
 
   if (!visible) return null;
 
@@ -350,7 +338,7 @@ export default function BootLoader() {
         <img
           src={LOGO_SRC}
           alt="BMC Development"
-          className="boot-loader__logo"
+          className="boot-loader__brand-logo"
           decoding="async"
           draggable={false}
         />
@@ -359,11 +347,16 @@ export default function BootLoader() {
           Preparing your private architectural experience
         </p>
 
-        <div ref={rotatorRef} className="boot-loader__story" aria-live="polite">
-          <p key={textIndex} className="boot-loader__rotator-text">
-            {CLIENT_TEXTS[textIndex]}
-          </p>
+        <div className="boot-loader__story" aria-label="About BMC Development">
+          <p className="boot-loader__story-hint">Scroll to read more</p>
+          {CLIENT_TEXTS.map((paragraph) => (
+            <p key={paragraph} className="boot-loader__story-paragraph">
+              {paragraph}
+            </p>
+          ))}
         </div>
+
+        <div className="boot-loader__spacer" aria-hidden="true" />
 
         <div className="boot-loader__progress">
           <div className="boot-loader__status">
