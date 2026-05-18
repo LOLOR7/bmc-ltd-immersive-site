@@ -31,7 +31,7 @@ export default function Header() {
           alt="BMC Development"
           draggable={false}
           decoding="async"
-          className="h-auto w-[54px] object-contain sm:w-[64px] md:w-[78px] lg:w-[88px]"
+          className="h-auto w-[92px] object-contain md:w-[78px] lg:w-[88px]"
         />
       </Link>
 

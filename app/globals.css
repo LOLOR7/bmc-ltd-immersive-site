@@ -233,11 +233,11 @@ body {
   background: transparent;
 }
 
-/* Mobile: show full building — avoid aggressive cover crop on iPhone */
+/* Mobile: 9:16 dedicated frames — full-screen cover (Reels-style) */
 @media (max-width: 768px) {
   .frame-image,
   .frame-image.frame-image-strict {
-    object-fit: contain;
+    object-fit: cover;
     object-position: center center;
   }
 }
