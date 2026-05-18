@@ -1,4 +1,3 @@
-import BootLoader from "@/components/BootLoader";
 import SmoothScroll from "@/components/SmoothScroll";
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
@@ -25,7 +24,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={montserrat.variable}>
       <body className="bg-[#050505] font-sans text-foreground antialiased">
-        <BootLoader />
         <SmoothScroll>{children}</SmoothScroll>
       </body>
     </html>
