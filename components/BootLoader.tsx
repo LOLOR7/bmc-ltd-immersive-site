@@ -173,6 +173,7 @@ export default function BootLoader() {
   const [progress, setProgress] = useState<number>(0);
   const [textIndex, setTextIndex] = useState<number>(0);
   const closedRef = useRef(false);
+  const rotatorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (hasSeenLoader()) {
@@ -324,6 +325,10 @@ export default function BootLoader() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    rotatorRef.current?.scrollTo({ top: 0 });
+  }, [textIndex]);
+
   if (!visible) return null;
 
   const overlayStyle = {
@@ -353,7 +358,7 @@ export default function BootLoader() {
           Preparing your private architectural experience
         </p>
 
-        <div className="boot-loader__rotator" aria-live="polite">
+        <div ref={rotatorRef} className="boot-loader__rotator" aria-live="polite">
           <p key={textIndex} className="boot-loader__rotator-text">
             {CLIENT_TEXTS[textIndex]}
           </p>

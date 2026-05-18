@@ -66,7 +66,13 @@ function frameIndexFromProgress(
   );
 }
 
-function SceneBlock({ scene }: { scene: SceneContent }) {
+function SceneBlock({
+  scene,
+  experienceId,
+}: {
+  scene: SceneContent;
+  experienceId: string;
+}) {
   return (
     <div className="scene-block max-w-3xl">
       {scene.index && (
@@ -89,6 +95,7 @@ function SceneBlock({ scene }: { scene: SceneContent }) {
           ))}
         </ul>
       )}
+      <ViewProjectLink experienceId={experienceId} />
     </div>
   );
 }
@@ -537,7 +544,7 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
             </div>
           )}
           {typeof activePanel === "number" && (
-            <SceneBlock scene={scenes[activePanel]} />
+            <SceneBlock scene={scenes[activePanel]} experienceId={id} />
           )}
         </div>
 

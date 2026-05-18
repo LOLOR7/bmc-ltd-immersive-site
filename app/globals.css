@@ -442,16 +442,60 @@ body.boot-loading {
   max-width: 24rem;
 }
 
-@media (max-width: 480px) {
+/* BootLoader — mobile readability (logo, scrollable copy, lower progress block) */
+@media (max-width: 767px) {
   .boot-loader__inner {
-    gap: 0.55rem;
+    width: min(36rem, 92vw);
+    gap: 0.5rem;
+    padding-top: clamp(1.35rem, 5vw, 2rem);
+    padding-bottom: clamp(1rem, 3vw, 1.5rem);
   }
+
+  .boot-loader__logo {
+    width: clamp(100px, 26vw, 122px);
+    margin-bottom: 1rem;
+  }
+
   .boot-loader__rotator {
-    margin: 1.5rem 0 1.25rem;
-    min-height: 8rem;
+    margin: 1.5rem 0 0;
+    min-height: unset;
+    max-height: min(12.5rem, 32vh);
+    width: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(244, 240, 232, 0.22) transparent;
   }
+
+  .boot-loader__rotator::-webkit-scrollbar {
+    width: 3px;
+  }
+
+  .boot-loader__rotator::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(244, 240, 232, 0.22);
+  }
+
   .boot-loader__rotator-text {
-    line-height: 1.55;
+    font-size: 0.875rem;
+    line-height: 1.8;
+    max-width: 100%;
+    padding: 0 0.2rem 0.15rem;
+  }
+
+  .boot-loader__status {
+    margin: 2.35rem 0 1.15rem;
+    width: min(22rem, 86vw);
+  }
+
+  .boot-loader__hint {
+    margin-top: 1.1rem;
+  }
+
+  .boot-loader__sub {
+    margin-top: 0.55rem;
   }
 }
 
