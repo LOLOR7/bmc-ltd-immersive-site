@@ -5,7 +5,7 @@ export const ADMA514_SCENES: SceneContent[] = [
   {
     id: "arrival",
     index: "01",
-    title: "Street Arrival",
+    title: "Exterior View",
     description:
       "The residence appears from the road with a calm architectural presence.",
     metrics: [
@@ -29,7 +29,7 @@ export const ADMA514_SCENES: SceneContent[] = [
   {
     id: "interior",
     index: "03",
-    title: "Vertical Living",
+    title: "Spacious Interiors",
     description:
       "A double-height interior reveals volume, light and refined materials.",
     metrics: [

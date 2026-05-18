@@ -17,13 +17,12 @@ export const BEKISH_SCENES: SceneContent[] = [
   {
     id: "approach",
     index: "02",
-    title: "Architectural Approach",
-    description:
-      "The camera moves closer to the facade, revealing balconies, depth and materiality.",
+    title: "Balconies and terraces for all units",
+    description: "Each unit has its own private exterior space",
     metrics: [
       { label: "Layered Facade" },
       { label: "Private Terraces" },
-      { label: "Mountain Context" },
+      { label: "Open Sea View" },
     ],
   },
   {
@@ -41,7 +40,7 @@ export const BEKISH_SCENES: SceneContent[] = [
   {
     id: "final",
     index: "04",
-    title: "Final Perspective",
+    title: "Back Façade",
     description:
       "A complete cinematic overview of the project and its residential scale.",
     metrics: [

@@ -1,6 +1,7 @@
 "use client";
 
 import MetricPill from "@/components/MetricPill";
+import ViewProjectLink from "@/components/ViewProjectLink";
 import type { FrameExperienceConfig } from "@/lib/experiences/types";
 import type { SceneContent } from "@/lib/scenes";
 import gsap from "gsap";
@@ -525,6 +526,7 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
                   ))}
                 </ul>
               )}
+              <ViewProjectLink experienceId={id} />
               <p className="mt-8 flex items-center gap-2 text-[0.6rem] tracking-[0.28em] text-cream/40 uppercase md:mt-10">
                 <ChevronDown
                   className="h-3.5 w-3.5 animate-pulse"

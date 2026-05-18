@@ -5,9 +5,9 @@ export const ADMA527_SCENES: SceneContent[] = [
   {
     id: "arrival",
     index: "01",
-    title: "Glass Arrival",
+    title: "Large open façade",
     description:
-      "The camera enters directly through the ground-floor glass bay into the private living space.",
+      "All sides have large open glass facades for natural light exposure",
     metrics: [
       { label: "Ground-floor Entry" },
       { label: "Glass Bay" },
@@ -41,9 +41,9 @@ export const ADMA527_SCENES: SceneContent[] = [
   {
     id: "facade",
     index: "04",
-    title: "Side Facade",
+    title: "Front Facade",
     description:
-      "A final lateral perspective reveals the scale and rhythm of the residence.",
+      "A final front perspective reveals the scale and rhythm of the residence.",
     metrics: [
       { label: "2,300sqm Built Up Area" },
       { label: "Glass Balconies" },
@@ -57,7 +57,7 @@ export const ADMA527_EXPERIENCE: FrameExperienceConfig = {
   ariaLabel: "Adma 527 frame sequence",
   projectName: "Adma 527",
   subtitle:
-    "Seven luxury apartments shaped by stone, glass and elevated living.",
+    "Seven luxury apartments shaped by concrete, corten, and modern design.",
   hint: "Scroll to explore",
   location: "Adma",
   projectType: "7 Luxury Apartments",

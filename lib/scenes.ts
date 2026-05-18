@@ -41,9 +41,9 @@ export const SCENE_1: SceneContent = {
 export const SCENE_2: SceneContent = {
   id: "facade",
   index: "02",
-  title: "Lateral Flight",
+  title: "Side View",
   description:
-    "The glass volume opens the residence to the mountain horizon.",
+    "The glass volume opens the residence to the open mountain and sea view.",
   metrics: [
     { label: "Glass Facade" },
     { label: "Suspended Volume" },
