@@ -233,6 +233,15 @@ body {
   background: transparent;
 }
 
+/* Mobile: show full building — avoid aggressive cover crop on iPhone */
+@media (max-width: 768px) {
+  .frame-image,
+  .frame-image.frame-image-strict {
+    object-fit: contain;
+    object-position: center center;
+  }
+}
+
 .frame-exposure {
   position: absolute;
   inset: 0;
