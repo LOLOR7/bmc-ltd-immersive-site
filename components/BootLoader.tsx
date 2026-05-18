@@ -1,34 +1,27 @@
 "use client";
 
 /**
- * BootLoader — premium first-visit overlay for BMC Development.
+ * BootLoader — premium first-visit overlay + bounded critical preload.
  *
- *  Critical-only preload (FIRST project — Adma Cliff House):
- *    - Dev:  frames 1..5     (keep `npm run dev` fast on the Mac)
- *    - Prod: frames 1..60
- *    - Max 3 concurrent requests
- *    - No Map / no Set / no global cache — Image objects are nullified
- *      after load/error. The browser's HTTP cache is what we rely on.
- *    - No other project is preloaded. No idle batch. Nothing else.
+ *  Preload scope (HTTP cache only — Image refs released after load):
+ *    Prod:
+ *      - Project 1 (Adma Cliff House):  frames 1..60   /frames/frame_
+ *      - Project 2 (Bekish 6358):       frames 1..40   /frames/bekish-final/frame_
+ *      - Project 3 (Adma 527):          frame 1        /frames/adma-527-final/frame_
+ *      - Project 4 (Adma 514):          frame 1        /frames/adma-514/frame_
+ *      - Project 5 (Dusk):              frame 1        /frames/dusk/frame_
+ *    Dev (keep Mac fast):
+ *      - Project 1: frames 1..5
+ *      - Project 2: frames 1..3
+ *      - Projects 3–5: skipped
  *
- *  Close conditions (FIRST one wins):
- *    - (min visible elapsed) AND (critical preload finished trying)
- *    - Hard max timeout
+ *  Max 3 concurrent requests. No Map/Set. No idle batch. No requestIdleCallback.
  *
- *  Timings:
- *    Dev   — min visible 2 s, max 5 s
- *    Prod  — min visible 8 s, max 75 s
+ *  Close: (min visible AND preload done) OR max timeout.
+ *    Dev  — min 2 s, max 8 s
+ *    Prod — min 8 s, max 90 s
  *
- *  Safety:
- *   (A) React: setVisible(false) → component returns null. React owns its
- *       node — we never call removeChild / el.remove().
- *   (B) CSS:   `animation-delay = MAX_DURATION_MS` auto-hides the overlay
- *              (opacity / visibility / pointer-events) if React stalls.
- *   (C) `body.boot-loading` class added on mount, removed in close()
- *       + cleanup (idempotent).
- *
- *  No edit to FrameExperience, frames, configs, GSAP, scroll, or
- *  project texts. No video. No CDN. No folder scan.
+ *  React owns the overlay node — never removeChild / el.remove().
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -40,14 +33,55 @@ const LOGO_SRC = "/assets/bmc-logo-client-cream.png?v=1";
 
 const FADE_OUT_MS = 500;
 const TEXT_ROTATION_MS = 7000;
+const PRELOAD_CONCURRENCY = 3;
 
 const isDev = process.env.NODE_ENV === "development";
 const MIN_VISIBLE_MS = isDev ? 2000 : 8000;
-const MAX_DURATION_MS = isDev ? 5000 : 75000;
-const CRITICAL_FRAME_COUNT = isDev ? 5 : 60;
-const PRELOAD_CONCURRENCY = 3;
+const MAX_DURATION_MS = isDev ? 8000 : 90000;
 
-const CRITICAL_FRAME_PATH = "/frames/frame_";
+/** Paths match lib/experiences/*.ts framePath values — not edited here. */
+const FRAME_PATHS = {
+  adma: "/frames/frame_",
+  bekish: "/frames/bekish-final/frame_",
+  adma527: "/frames/adma-527-final/frame_",
+  adma514: "/frames/adma-514/frame_",
+  dusk: "/frames/dusk/frame_",
+} as const;
+
+type PreloadBatch = {
+  framePath: string;
+  start: number;
+  count: number;
+};
+
+function buildPreloadPlan(): PreloadBatch[] {
+  if (isDev) {
+    return [
+      { framePath: FRAME_PATHS.adma, start: 1, count: 5 },
+      { framePath: FRAME_PATHS.bekish, start: 1, count: 3 },
+    ];
+  }
+  return [
+    { framePath: FRAME_PATHS.adma, start: 1, count: 60 },
+    { framePath: FRAME_PATHS.bekish, start: 1, count: 40 },
+    { framePath: FRAME_PATHS.adma527, start: 1, count: 1 },
+    { framePath: FRAME_PATHS.adma514, start: 1, count: 1 },
+    { framePath: FRAME_PATHS.dusk, start: 1, count: 1 },
+  ];
+}
+
+function buildPreloadUrls(plan: PreloadBatch[]): string[] {
+  const urls: string[] = [];
+  for (const batch of plan) {
+    for (let i = 0; i < batch.count; i++) {
+      urls.push(`${batch.framePath}${String(batch.start + i).padStart(4, "0")}.jpg`);
+    }
+  }
+  return urls;
+}
+
+const PRELOAD_PLAN = buildPreloadPlan();
+const TOTAL_PRELOAD_COUNT = PRELOAD_PLAN.reduce((sum, b) => sum + b.count, 0);
 
 const CLIENT_TEXTS: string[] = [
   "BMC Development is a contracting, development, and architecture firm with over 40 years of experience delivering exceptional projects across Lebanon and Nigeria.",
@@ -57,14 +91,6 @@ const CLIENT_TEXTS: string[] = [
   "Explore a selection of our latest completed and ongoing developments.",
 ];
 
-function frameUrl(index: number): string {
-  return `${CRITICAL_FRAME_PATH}${String(index).padStart(4, "0")}.jpg`;
-}
-
-/**
- * Load one image without keeping any reference after onload/onerror.
- * The HTTP cache holds the bytes; we don't hold the JS object.
- */
 function loadOneAndRelease(
   url: string,
   signal: AbortSignal,
@@ -90,21 +116,18 @@ function loadOneAndRelease(
   });
 }
 
-async function preloadCriticalFrames(
+async function preloadUrls(
+  urls: string[],
   signal: AbortSignal,
   onProgress: () => void,
 ): Promise<void> {
-  const indices = Array.from(
-    { length: CRITICAL_FRAME_COUNT },
-    (_, i) => i + 1,
-  );
   let cursor = 0;
 
   const worker = async () => {
     while (!signal.aborted) {
       const next = cursor++;
-      if (next >= indices.length) return;
-      await loadOneAndRelease(frameUrl(indices[next]), signal);
+      if (next >= urls.length) return;
+      await loadOneAndRelease(urls[next], signal);
       if (!signal.aborted) onProgress();
     }
   };
@@ -139,10 +162,6 @@ function releaseBodyLock(): void {
 }
 
 export default function BootLoader() {
-  /**
-   * Always start as visible so SSR and hydration match.
-   * The useEffect immediately closes for returning visitors.
-   */
   const [visible, setVisible] = useState<boolean>(true);
   const [fading, setFading] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
@@ -158,24 +177,27 @@ export default function BootLoader() {
       return;
     }
 
-    if (isDev) console.log("[BootLoader] mounted");
+    if (isDev) {
+      console.log("[BootLoader] mounted", {
+        totalFrames: TOTAL_PRELOAD_COUNT,
+        plan: PRELOAD_PLAN,
+      });
+    } else {
+      console.log("[BootLoader] mounted");
+    }
+
     document.body.classList.add("boot-loading");
 
     const abortCtrl = new AbortController();
+    const preloadUrlsList = buildPreloadUrls(PRELOAD_PLAN);
     const t0 = Date.now();
     let minReached = false;
     let preloadDone = false;
     let loadedCount = 0;
 
-    /**
-     * Combined progress:
-     *   - real    = frames attempted / total
-     *   - time    = elapsed / (max * 0.9)   (capped at 0.92)
-     * Bar uses the maximum — never stalls visually.
-     * Hard ceiling 0.97 until the close() bumps it to 1.0.
-     */
     const updateProgress = () => {
-      const realProgress = loadedCount / CRITICAL_FRAME_COUNT;
+      const realProgress =
+        TOTAL_PRELOAD_COUNT > 0 ? loadedCount / TOTAL_PRELOAD_COUNT : 1;
       const elapsed = Date.now() - t0;
       const timeProgress = Math.min(elapsed / (MAX_DURATION_MS * 0.9), 0.92);
       const next = Math.min(0.97, Math.max(realProgress, timeProgress));
@@ -193,7 +215,6 @@ export default function BootLoader() {
       setProgress(1);
       setFading(true);
       releaseBodyLock();
-      // Defer unmount so the fade-out is visible; React owns the node.
       window.setTimeout(() => {
         setVisible(false);
       }, FADE_OUT_MS);
@@ -217,7 +238,7 @@ export default function BootLoader() {
       close();
     }, MAX_DURATION_MS);
 
-    void preloadCriticalFrames(abortCtrl.signal, () => {
+    void preloadUrls(preloadUrlsList, abortCtrl.signal, () => {
       loadedCount += 1;
       updateProgress();
     }).then(() => {
@@ -271,10 +292,7 @@ export default function BootLoader() {
         </p>
 
         <div className="boot-loader__rotator" aria-live="polite">
-          <p
-            key={textIndex}
-            className="boot-loader__rotator-text"
-          >
+          <p key={textIndex} className="boot-loader__rotator-text">
             {CLIENT_TEXTS[textIndex]}
           </p>
         </div>
