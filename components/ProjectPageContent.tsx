@@ -1,7 +1,6 @@
+import ProjectPageHeader from "@/components/ProjectPageHeader";
 import type { ProjectPageData } from "@/lib/project-details";
-import Link from "next/link";
 
-const LOGO_SRC = "/assets/bmc-logo-client-cream.png?v=1";
 const WHATSAPP_URL = "https://wa.me/96170137192";
 const PHONE_URL = "tel:+96170137192";
 
@@ -12,21 +11,7 @@ type ProjectPageContentProps = {
 export default function ProjectPageContent({ project }: ProjectPageContentProps) {
   return (
     <div className="project-page">
-      <header className="project-page__header">
-        <Link href="/" className="project-page__logo-link" aria-label="BMC Development">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={LOGO_SRC}
-            alt="BMC Development"
-            className="project-page__logo"
-            decoding="async"
-            draggable={false}
-          />
-        </Link>
-        <Link href="/" className="project-page__back">
-          Back to experience
-        </Link>
-      </header>
+      <ProjectPageHeader />
 
       <main className="project-page__main">
         <section className="project-page__hero">

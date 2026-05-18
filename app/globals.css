@@ -514,7 +514,16 @@ body.boot-loading {
   object-fit: contain;
 }
 
+.project-page__header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
 .project-page__back {
+  display: none;
   font-size: 0.62rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -522,6 +531,12 @@ body.boot-loading {
   color: rgba(244, 240, 232, 0.55);
   transition: color 0.35s ease;
   white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+  .project-page__back {
+    display: inline;
+  }
 }
 
 .project-page__back:hover {

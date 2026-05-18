@@ -17,9 +17,12 @@
  *
  *  Max 3 concurrent requests. No Map/Set. No idle batch. No requestIdleCallback.
  *
- *  Close: (min visible AND preload done) OR max timeout.
+ *  Close: (min visible AND preload done) OR max wall-clock elapsed.
  *    Dev  — min 2 s, max 8 s
- *    Prod — min 8 s, max 90 s
+ *    Prod — min 8 s, max 75 s
+ *
+ *  Wall-clock watchdog + visibilitychange guard against Safari background-tab
+ *  timer throttling (setTimeout may not fire while the tab is inactive).
  *
  *  React owns the overlay node — never removeChild / el.remove().
  */
@@ -34,10 +37,13 @@ const LOGO_SRC = "/assets/bmc-logo-client-cream.png?v=1";
 const FADE_OUT_MS = 500;
 const TEXT_ROTATION_MS = 7000;
 const PRELOAD_CONCURRENCY = 3;
+const WATCHDOG_MS = 500;
 
 const isDev = process.env.NODE_ENV === "development";
 const MIN_VISIBLE_MS = isDev ? 2000 : 8000;
-const MAX_DURATION_MS = isDev ? 8000 : 90000;
+const MAX_DURATION_MS = isDev ? 8000 : 75000;
+
+type CloseReason = "preload" | "timeout" | "visibility" | "watchdog";
 
 /** Paths match lib/experiences/*.ts framePath values — not edited here. */
 const FRAME_PATHS = {
@@ -182,50 +188,80 @@ export default function BootLoader() {
         totalFrames: TOTAL_PRELOAD_COUNT,
         plan: PRELOAD_PLAN,
       });
-    } else {
-      console.log("[BootLoader] mounted");
     }
 
     document.body.classList.add("boot-loading");
 
     const abortCtrl = new AbortController();
     const preloadUrlsList = buildPreloadUrls(PRELOAD_PLAN);
-    const t0 = Date.now();
+    const t0 = performance.now();
     let minReached = false;
     let preloadDone = false;
     let loadedCount = 0;
 
+    const elapsedMs = () => performance.now() - t0;
+
     const updateProgress = () => {
       const realProgress =
         TOTAL_PRELOAD_COUNT > 0 ? loadedCount / TOTAL_PRELOAD_COUNT : 1;
-      const elapsed = Date.now() - t0;
+      const elapsed = elapsedMs();
       const timeProgress = Math.min(elapsed / (MAX_DURATION_MS * 0.9), 0.92);
       const next = Math.min(0.97, Math.max(realProgress, timeProgress));
       setProgress((prev) => (next > prev ? next : prev));
     };
 
-    const progressInterval = window.setInterval(updateProgress, 200);
-
-    const close = () => {
+    const close = (reason: CloseReason) => {
       if (closedRef.current) return;
       closedRef.current = true;
-      if (isDev) console.log("[BootLoader] hidden");
+      if (isDev) console.log(`[BootLoader] close called reason=${reason}`);
+
       markLoaderSeen();
       abortCtrl.abort();
       setProgress(1);
       setFading(true);
       releaseBodyLock();
+      if (isDev) console.log("[BootLoader] body lock released");
+
+      const hardClose =
+        reason === "timeout" ||
+        reason === "visibility" ||
+        reason === "watchdog";
+
+      if (hardClose) {
+        setVisible(false);
+        if (isDev) console.log("[BootLoader] hidden (immediate)");
+        return;
+      }
+
       window.setTimeout(() => {
         setVisible(false);
+        if (isDev) console.log("[BootLoader] hidden");
       }, FADE_OUT_MS);
     };
 
     const tryClose = () => {
       if (minReached && preloadDone) {
-        if (isDev) console.log("[BootLoader] close conditions met");
-        close();
+        close("preload");
       }
     };
+
+    const evaluateWallClock = (source: "watchdog" | "visibility") => {
+      const elapsed = elapsedMs();
+      if (elapsed >= MIN_VISIBLE_MS) minReached = true;
+      if (elapsed >= MAX_DURATION_MS) {
+        if (isDev) {
+          console.log(
+            `[BootLoader] max timeout reached (${source}, ${Math.round(elapsed)}ms)`,
+          );
+        }
+        close(source === "visibility" ? "visibility" : "watchdog");
+        return true;
+      }
+      tryClose();
+      return false;
+    };
+
+    const progressInterval = window.setInterval(updateProgress, 200);
 
     const minTimer = window.setTimeout(() => {
       minReached = true;
@@ -234,12 +270,36 @@ export default function BootLoader() {
     }, MIN_VISIBLE_MS);
 
     const maxTimer = window.setTimeout(() => {
-      if (isDev) console.log("[BootLoader] max timeout reached");
-      close();
+      if (isDev) console.log("[BootLoader] max timeout reached (timer)");
+      close("timeout");
     }, MAX_DURATION_MS);
+
+    const watchdog = window.setInterval(() => {
+      updateProgress();
+      evaluateWallClock("watchdog");
+    }, WATCHDOG_MS);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+      if (isDev) {
+        console.log(
+          `[BootLoader] tab visible (elapsed ${Math.round(elapsedMs())}ms)`,
+        );
+      }
+      evaluateWallClock("visibility");
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    if (isDev) console.log("[BootLoader] preload started");
 
     void preloadUrls(preloadUrlsList, abortCtrl.signal, () => {
       loadedCount += 1;
+      if (isDev) {
+        console.log(
+          `[BootLoader] preload progress ${loadedCount}/${TOTAL_PRELOAD_COUNT}`,
+        );
+      }
       updateProgress();
     }).then(() => {
       preloadDone = true;
@@ -256,7 +316,9 @@ export default function BootLoader() {
       window.clearTimeout(minTimer);
       window.clearTimeout(maxTimer);
       window.clearInterval(progressInterval);
+      window.clearInterval(watchdog);
       window.clearInterval(textTimer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       releaseBodyLock();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
