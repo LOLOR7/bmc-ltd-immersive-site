@@ -68,7 +68,7 @@ export const DUSK_EXPERIENCE: FrameExperienceConfig = {
   ],
   scenes: DUSK_SCENES,
   framePath: "/frames/dusk/frame_",
-  mobileFramePath: "/frames-mobile/dusk/frame_",
+  mobileFramePath: "/frames-mobile/dusk-9-16/frame_",
   totalFrames: 435,
   mobileTotalFrames: 326,
   startFrame: 1,
