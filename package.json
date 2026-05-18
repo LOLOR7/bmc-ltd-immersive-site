@@ -1,0 +1,37 @@
+{
+  "name": "adma-cliff-house",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "extract:frames": "mkdir -p public/frames && ffmpeg -i public/videos/main-film.mp4 -vf \"fps=24,scale=1920:-1\" -q:v 3 public/frames/frame_%04d.jpg",
+    "extract:frames:bekish": "mkdir -p public/frames/bekish-6358 && ffmpeg -i public/videos/bekish-6358.mp4 -vf \"fps=24,scale=1920:-1\" -q:v 3 public/frames/bekish-6358/frame_%04d.jpg",
+    "extract:frames:bekish:final": "rm -rf public/frames/bekish-final && mkdir -p public/frames/bekish-final && ffmpeg -i public/videos/bekish-final.mp4 -vf \"fps=24,scale=1920:-1\" -q:v 3 public/frames/bekish-final/frame_%04d.jpg",
+    "extract:frames:adma527": "rm -rf public/frames/adma-527 && mkdir -p public/frames/adma-527 && ffmpeg -i public/videos/adma-527.mp4 -vf \"fps=24,scale=1920:-1\" -q:v 3 public/frames/adma-527/frame_%04d.jpg",
+    "extract:frames:adma527:final": "rm -rf public/frames/adma-527-final && mkdir -p public/frames/adma-527-final && ffmpeg -i public/videos/adma-527-final.mp4 -vf \"fps=24,scale=1920:-1\" -q:v 3 public/frames/adma-527-final/frame_%04d.jpg",
+    "extract:frames:adma514": "rm -rf public/frames/adma-514 && mkdir -p public/frames/adma-514 && ffmpeg -i public/videos/adma-514-final.mp4 -vf \"fps=24,scale=1920:-1\" -q:v 3 public/frames/adma-514/frame_%04d.jpg",
+    "extract:frames:dusk": "mkdir -p public/frames/dusk && ffmpeg -y -i public/videos/dusk-final.mp4 -vf \"fps=24,scale=1920:-1\" -q:v 3 public/frames/dusk/frame_%04d.jpg",
+    "extract:frames:mobile:dusk": "mkdir -p public/frames-mobile/dusk && ffmpeg -y -i public/videos/dusk-final.mp4 -vf \"fps=18,scale=1080:-1\" -q:v 4 public/frames-mobile/dusk/frame_%04d.jpg"
+  },
+  "dependencies": {
+    "gsap": "^3.15.0",
+    "lenis": "^1.3.23",
+    "lucide-react": "^0.511.0",
+    "next": "16.2.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.6",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

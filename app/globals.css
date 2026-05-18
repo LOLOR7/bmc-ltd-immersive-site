@@ -1,0 +1,298 @@
+@import "tailwindcss";
+
+:root {
+  --background: #050505;
+  --foreground: #f4f0e8;
+  --cream: #f4f0e8;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-cream: var(--cream);
+  --font-sans: var(--font-montserrat);
+}
+
+html {
+  scroll-behavior: auto;
+}
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  background: #050505;
+  color: var(--foreground);
+  font-family: var(--font-montserrat), "Montserrat", ui-sans-serif, system-ui,
+    sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* —— Cinematic brand intro —— */
+.brand-intro {
+  position: relative;
+  background: #050505;
+}
+
+.brand-intro__stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  isolation: isolate;
+  background: radial-gradient(
+    ellipse 90% 70% at 50% 45%,
+    #121110 0%,
+    #080807 45%,
+    #000000 100%
+  );
+}
+
+.brand-intro__vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 75% 60% at 50% 50%,
+    transparent 0%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+}
+
+.brand-intro__lines {
+  position: absolute;
+  inset: -5%;
+  z-index: 2;
+  width: 110%;
+  height: 110%;
+  left: -5%;
+  color: rgba(228, 220, 205, 0.28);
+  pointer-events: none;
+}
+
+.brand-intro__center {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(20px, 5vw, 48px);
+  text-align: center;
+}
+
+.brand-intro__logo-wrap {
+  position: relative;
+  max-width: 100%;
+}
+
+.brand-intro__logo {
+  display: block;
+  width: min(42vw, 640px);
+  height: auto;
+  max-width: 100%;
+}
+
+.brand-intro__tagline {
+  margin-top: clamp(1.25rem, 3vw, 2rem);
+  font-size: clamp(0.65rem, 1.8vw, 0.75rem);
+  font-weight: 300;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: rgba(244, 240, 232, 0.42);
+}
+
+.brand-intro__scroll {
+  position: absolute;
+  bottom: max(2.25rem, calc(env(safe-area-inset-bottom) + 1.5rem));
+  left: 50%;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  transform: translateX(-50%);
+}
+
+.brand-intro__scroll-rod {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 4.5rem;
+  width: 1rem;
+}
+
+.brand-intro__scroll-track {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 100%;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    to bottom,
+    rgba(244, 240, 232, 0.08),
+    rgba(244, 240, 232, 0.4) 50%,
+    rgba(244, 240, 232, 0.65) 100%
+  );
+}
+
+.brand-intro__scroll-dot {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  background: rgba(244, 240, 232, 0.85);
+  box-shadow: 0 0 8px rgba(244, 240, 232, 0.35);
+  animation: brand-scroll-dot 2.1s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.brand-intro__scroll-text {
+  font-size: 0.6rem;
+  font-weight: 400;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: rgba(244, 240, 232, 0.38);
+}
+
+@keyframes brand-scroll-dot {
+  0% {
+    top: 0;
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  75% {
+    top: calc(100% - 5px);
+    opacity: 0.35;
+    transform: translateX(-50%) scale(0.85);
+  }
+  100% {
+    top: calc(100% - 5px);
+    opacity: 0;
+    transform: translateX(-50%) scale(0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-intro__scroll-dot {
+    animation: none;
+    top: 50%;
+    opacity: 0.8;
+  }
+}
+
+/* —— Frame sequence (required layout) —— */
+.frame-section {
+  position: relative;
+  height: 300vh;
+  background: #050505;
+}
+
+.frame-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  isolation: isolate;
+  background: #050505;
+}
+
+.frame-image {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  filter: brightness(0.9) contrast(1.06) saturate(0.94);
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.frame-image-strict {
+  background: transparent;
+}
+
+.frame-exposure {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.frame-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.38) 0%,
+    rgba(0, 0, 0, 0.28) 45%,
+    rgba(0, 0, 0, 0.48) 100%
+  );
+}
+
+.frame-text-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  padding: clamp(24px, 6vw, 96px);
+  padding-bottom: max(clamp(24px, 6vw, 96px), env(safe-area-inset-bottom));
+}
+
+.frame-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #050505;
+}
+
+.final-section {
+  position: relative;
+  z-index: 10;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #050505;
+  padding: clamp(48px, 8vw, 96px) clamp(24px, 6vw, 48px);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frame-image {
+    transform: none;
+  }
+
+  .animate-pulse {
+    animation: none;
+  }
+}
