@@ -373,30 +373,32 @@ export default function BootLoader() {
             className="boot-loader__story-slider"
             onScroll={handleStoryScroll}
           >
-            <div className="boot-loader__story-track">
-              {CLIENT_TEXTS.map((paragraph) => (
+            {CLIENT_TEXTS.filter((p) => p.trim().length > 0).map(
+              (paragraph) => (
                 <div key={paragraph} className="boot-loader__story-slide">
                   <p className="boot-loader__story-paragraph">{paragraph}</p>
                 </div>
-              ))}
-            </div>
+              ),
+            )}
           </div>
 
           <div className="boot-loader__story-dots" aria-hidden="true">
-            {CLIENT_TEXTS.map((paragraph, index) => (
-              <button
-                key={paragraph}
-                type="button"
-                className={
-                  "boot-loader__story-dot" +
-                  (index === activeStory
-                    ? " boot-loader__story-dot--active"
-                    : "")
-                }
-                onClick={() => goToStory(index)}
-                aria-label={`Go to slide ${index + 1}`}
-              />
-            ))}
+            {CLIENT_TEXTS.filter((p) => p.trim().length > 0).map(
+              (paragraph, index) => (
+                <button
+                  key={paragraph}
+                  type="button"
+                  className={
+                    "boot-loader__story-dot" +
+                    (index === activeStory
+                      ? " boot-loader__story-dot--active"
+                      : "")
+                  }
+                  onClick={() => goToStory(index)}
+                  aria-label={`Go to slide ${index + 1}`}
+                />
+              ),
+            )}
           </div>
 
           <p className="boot-loader__story-hint">Swipe to read more</p>

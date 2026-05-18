@@ -409,6 +409,7 @@ body.boot-loading {
 
 .boot-loader__story-slider {
   width: 100%;
+  display: flex;
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
@@ -421,11 +422,6 @@ body.boot-loading {
   display: none;
 }
 
-.boot-loader__story-track {
-  display: flex;
-  width: max-content;
-}
-
 .boot-loader__story-slide {
   flex: 0 0 100%;
   width: 100%;
@@ -436,10 +432,6 @@ body.boot-loading {
   justify-content: center;
   padding: 0 0.5rem;
   box-sizing: border-box;
-}
-
-.boot-loader__story-slider > .boot-loader__story-track > .boot-loader__story-slide {
-  width: min(40rem, 92vw);
 }
 
 .boot-loader__story-paragraph {
