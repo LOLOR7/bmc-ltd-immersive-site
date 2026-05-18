@@ -4,16 +4,19 @@
  * BootLoader — premium first-visit overlay + bounded critical preload.
  *
  *  Preload scope (HTTP cache only — Image refs released after load):
- *    Prod:
+ *    Prod desktop:
  *      - Project 1 (Adma Cliff House):  frames 1..60   /frames/frame_
  *      - Project 2 (Bekish 6358):       frames 1..40   /frames/bekish-final/frame_
  *      - Project 3 (Adma 527):          frame 1        /frames/adma-527-final/frame_
  *      - Project 4 (Adma 514):          frame 1        /frames/adma-514/frame_
  *      - Project 5 (Dusk):              frame 1        /frames/dusk/frame_
- *    Dev (keep Mac fast):
+ *    Prod mobile (≤768px):
+ *      - Project 1 (Adma Cliff House):  frames 1..80   /frames-mobile/adma-cliff-house-9-6/frame_
+ *    Dev desktop (keep Mac fast):
  *      - Project 1: frames 1..5
  *      - Project 2: frames 1..3
- *      - Projects 3–5: skipped
+ *    Dev mobile:
+ *      - Project 1 mobile: frames 1..5
  *
  *  Max 3 concurrent requests. No Map/Set. No idle batch. No requestIdleCallback.
  *
@@ -55,18 +58,28 @@ const FRAME_PATHS = {
   dusk: "/frames/dusk/frame_",
 } as const;
 
+const FRAME_PATHS_MOBILE = {
+  adma: "/frames-mobile/adma-cliff-house-9-6/frame_",
+} as const;
+
 type PreloadBatch = {
   framePath: string;
   start: number;
   count: number;
 };
 
-function buildPreloadPlan(): PreloadBatch[] {
+function buildPreloadPlan(isMobile: boolean): PreloadBatch[] {
   if (isDev) {
+    if (isMobile) {
+      return [{ framePath: FRAME_PATHS_MOBILE.adma, start: 1, count: 5 }];
+    }
     return [
       { framePath: FRAME_PATHS.adma, start: 1, count: 5 },
       { framePath: FRAME_PATHS.bekish, start: 1, count: 3 },
     ];
+  }
+  if (isMobile) {
+    return [{ framePath: FRAME_PATHS_MOBILE.adma, start: 1, count: 80 }];
   }
   return [
     { framePath: FRAME_PATHS.adma, start: 1, count: 60 },
@@ -86,9 +99,6 @@ function buildPreloadUrls(plan: PreloadBatch[]): string[] {
   }
   return urls;
 }
-
-const PRELOAD_PLAN = buildPreloadPlan();
-const TOTAL_PRELOAD_COUNT = PRELOAD_PLAN.reduce((sum, b) => sum + b.count, 0);
 
 const CLIENT_TEXTS: string[] = [
   "BMC Development is a contracting, development, and architecture firm with over 40 years of experience delivering exceptional projects across Lebanon and Nigeria.",
@@ -200,17 +210,22 @@ export default function BootLoader() {
       return;
     }
 
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+    const preloadPlan = buildPreloadPlan(isMobile);
+    const totalPreloadCount = preloadPlan.reduce((sum, b) => sum + b.count, 0);
+
     if (isDev) {
       console.log("[BootLoader] mounted", {
-        totalFrames: TOTAL_PRELOAD_COUNT,
-        plan: PRELOAD_PLAN,
+        isMobile,
+        totalFrames: totalPreloadCount,
+        plan: preloadPlan,
       });
     }
 
     document.body.classList.add("boot-loading");
 
     const abortCtrl = new AbortController();
-    const preloadUrlsList = buildPreloadUrls(PRELOAD_PLAN);
+    const preloadUrlsList = buildPreloadUrls(preloadPlan);
     const startTime = Date.now();
     let minLogged = false;
     let loadedCount = 0;
@@ -226,7 +241,7 @@ export default function BootLoader() {
 
     const updateProgress = () => {
       const realProgress =
-        TOTAL_PRELOAD_COUNT > 0 ? loadedCount / TOTAL_PRELOAD_COUNT : 1;
+        totalPreloadCount > 0 ? loadedCount / totalPreloadCount : 1;
       const elapsed = elapsedMs();
       const timeProgress = Math.min(elapsed / (MAX_DURATION_MS * 0.9), 0.92);
       const next = Math.min(0.97, Math.max(realProgress, timeProgress));
@@ -358,7 +373,7 @@ export default function BootLoader() {
       loadedCount += 1;
       if (isDev) {
         console.log(
-          `[BootLoader] preload progress ${loadedCount}/${TOTAL_PRELOAD_COUNT}`,
+          `[BootLoader] preload progress ${loadedCount}/${totalPreloadCount}`,
         );
       }
       updateProgress();
