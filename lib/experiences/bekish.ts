@@ -78,4 +78,5 @@ export const BEKISH_EXPERIENCE: FrameExperienceConfig = {
     { start: 0.5, end: 0.75 },
     { start: 0.75, end: 1 },
   ],
+  strictAntiFlicker: true,
 };

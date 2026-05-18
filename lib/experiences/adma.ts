@@ -32,4 +32,5 @@ export const ADMA_EXPERIENCE: FrameExperienceConfig = {
     { start: 0.33, end: 0.66 },
     { start: 0.66, end: 1 },
   ],
+  strictAntiFlicker: true,
 };
