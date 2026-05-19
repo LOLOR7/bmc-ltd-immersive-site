@@ -40,31 +40,47 @@ export default function MobileVideoJourney() {
     );
     if (sections.length === 0) return;
 
-    const ratios = new Map<number, number>();
+    /**
+     * Composite key tracker — intro-i and video-i share the same
+     * `data-mobile-project-index` value, which previously caused a race
+     * inside a single IO callback batch: ratios.delete(i) for the exiting
+     * intro could wipe out the ratios.set(i) issued for the still-visible
+     * video (entry order is not guaranteed). This made activeIndex
+     * oscillate during the intro-N → video-N → intro-N+1 transition and
+     * stuck the Bekish gate on a flicker. Tracking by element identity
+     * (`${section-type}:${index}`) decouples the two and keeps the index
+     * derivation correct.
+     */
+    type RatioEntry = { index: number; ratio: number };
+    const ratios = new Map<string, RatioEntry>();
 
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          const index = Number(
-            (entry.target as HTMLElement).dataset.mobileProjectIndex,
-          );
+          const target = entry.target as HTMLElement;
+          const index = Number(target.dataset.mobileProjectIndex);
+          const sectionType =
+            target.dataset.mobileJourneySection ?? "unknown";
           if (!Number.isFinite(index)) continue;
+          const key = `${sectionType}:${index}`;
           if (entry.isIntersecting) {
-            ratios.set(index, entry.intersectionRatio);
+            ratios.set(key, { index, ratio: entry.intersectionRatio });
           } else {
-            ratios.delete(index);
+            ratios.delete(key);
           }
         }
         if (ratios.size === 0) return;
-        let bestIndex = 0;
+        let bestIndex: number | null = null;
         let bestRatio = -1;
-        for (const [idx, ratio] of ratios) {
+        for (const { index: idx, ratio } of ratios.values()) {
           if (ratio > bestRatio) {
             bestRatio = ratio;
             bestIndex = idx;
           }
         }
-        setActiveIndex((prev) => (prev === bestIndex ? prev : bestIndex));
+        if (bestIndex === null) return;
+        const next = bestIndex;
+        setActiveIndex((prev) => (prev === next ? prev : next));
       },
       {
         threshold: [0, 0.1, 0.25, 0.4, 0.55, 0.7, 0.85],
@@ -91,12 +107,18 @@ export default function MobileVideoJourney() {
         const shouldLoadVideo =
           project.index >= activeIndex - 1 && project.index <= activeIndex + 1;
         /**
-         * Hidden gate prepare — only for the active project (max 1 at a
-         * time). The visible video for next/prev still preloads via the
-         * lazy <video> above, so when user reaches next intro, gate
-         * readiness fires fast via Safari's HTTP cache.
+         * Hysteresis-aware prepare flag (post-regression fix):
+         *   - active project           → enabled
+         *   - next project             → enabled (head start for the gate)
+         *   - already-unlocked project → disabled (no need to keep prepping)
+         * Tolerates transient activeIndex flips so the hidden video does
+         * not get destroyed mid-gate and the gate stays subscribed across
+         * intersection noise. Max 2 hidden prepares at a time.
          */
-        const shouldPrepareVideo = project.index === activeIndex;
+        const shouldPrepareVideo =
+          !isUnlocked &&
+          (project.index === activeIndex ||
+            project.index === activeIndex + 1);
 
         return (
           <div key={project.slug}>

@@ -31,6 +31,25 @@ type VideoEntry = {
 
 const entries = new Map<string, VideoEntry>();
 
+/**
+ * Per-URL metadata that survives entry release/re-acquire cycles. Without
+ * this, an activeIndex flip during gate engagement would destroy the entry
+ * (after RELEASE_GRACE_MS), clear the 28s gateTimer, and re-acquire would
+ * restart the clock from zero — the "Continue anyway" escape hatch would
+ * never appear. Sticky meta keeps the total wait time honest.
+ */
+type UrlMeta = { firstSeenAt: number; timedOut: boolean };
+const urlMeta = new Map<string, UrlMeta>();
+
+function getOrCreateUrlMeta(href: string): UrlMeta {
+  let meta = urlMeta.get(href);
+  if (!meta) {
+    meta = { firstSeenAt: Date.now(), timedOut: false };
+    urlMeta.set(href, meta);
+  }
+  return meta;
+}
+
 function resolveHref(src: string): string {
   return new URL(src, window.location.href).href;
 }
@@ -114,14 +133,26 @@ function ensureLinkPreload(href: string): HTMLLinkElement {
 
 function startGateTimer(entry: VideoEntry): void {
   if (entry.gateTimer) return;
+  const meta = getOrCreateUrlMeta(entry.href);
+  if (meta.timedOut) {
+    entry.snapshot = computeSnapshot(
+      entry.video,
+      entry.snapshot.error,
+      true,
+    );
+    return;
+  }
+  const elapsed = Date.now() - meta.firstSeenAt;
+  const remaining = Math.max(0, MAX_GATE_WAIT_MS - elapsed);
   entry.gateTimer = setTimeout(() => {
+    meta.timedOut = true;
     entry.snapshot = computeSnapshot(
       entry.video,
       entry.snapshot.error,
       true,
     );
     notifyEntry(entry);
-  }, MAX_GATE_WAIT_MS);
+  }, remaining);
 }
 
 /** Free the hidden <video>, remove the <link>, drop the entry. */
@@ -183,12 +214,13 @@ export function acquireMobileVideoPrepare(src: string): {
     video.src = href;
 
     const linkElement = ensureLinkPreload(href);
+    const meta = getOrCreateUrlMeta(href);
 
     entry = {
       video,
       href,
       listeners: new Set(),
-      snapshot: computeSnapshot(video, false, false),
+      snapshot: computeSnapshot(video, false, meta.timedOut),
       gateTimer: null,
       releaseTimer: null,
       detach: null,

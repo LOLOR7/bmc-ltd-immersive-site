@@ -25,7 +25,17 @@ export function useVideoReadyGate(
 
   useEffect(() => {
     if (!enabled) {
-      setSnapshot(initial);
+      /**
+       * Preserve timedOut across enabled flips. Without this, a transient
+       * activeIndex oscillation would wipe the local timeout state and
+       * the "Continue anyway" escape hatch could never surface, leaving
+       * the gate locked indefinitely. The readiness layer keeps its own
+       * sticky per-URL meta — we mirror it here for the consumer.
+       */
+      setSnapshot((prev) => ({
+        ...initial,
+        timedOut: prev.timedOut,
+      }));
       return;
     }
     const { subscribe } = acquireMobileVideoPrepare(videoSrc);

@@ -466,9 +466,7 @@ body {
 
 @media (max-width: 768px) {
   body.mobile-gate-locked {
-    position: fixed;
     overflow: hidden;
-    width: 100%;
     touch-action: none;
   }
 

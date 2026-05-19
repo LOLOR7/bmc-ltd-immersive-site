@@ -109,18 +109,28 @@ export default function MobileProjectIntro({
     const section = sectionRef.current;
     if (!section || hasUnlocked) return;
 
+    /**
+     * Engagement criterion (final): only when the intro section has
+     * scrolled to fill the viewport — its top is at or above the viewport
+     * top. Both the underlying section and the overlay center their
+     * content; aligning their positions eliminates the "page remonte"
+     * perceived jump (ratio 0.7 left a 30vh mismatch). A small 5vh
+     * tolerance is allowed so fast scrolls do not miss the engagement.
+     * The ratio >= 0.95 fallback catches the case where intro height ever
+     * exceeds the viewport (e.g. taller devices / dynamic content).
+     */
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry) return;
         const rect = entry.boundingClientRect;
+        const viewportH = window.innerHeight;
         const engaged =
           entry.isIntersecting &&
-          (entry.intersectionRatio >= 0.45 ||
-            (rect.top <= window.innerHeight * 0.2 &&
-              rect.bottom > window.innerHeight * 0.35));
+          (rect.top <= viewportH * 0.05 ||
+            entry.intersectionRatio >= 0.95);
         setGateEngaged(engaged);
       },
-      { threshold: [0, 0.15, 0.35, 0.55] },
+      { threshold: [0, 0.5, 0.9, 0.95, 1] },
     );
 
     observer.observe(section);
