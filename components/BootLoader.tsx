@@ -11,8 +11,7 @@
  *      - Project 4 (Adma 514):          frame 1        /frames/adma-514/frame_
  *      - Project 5 (Dusk):              frame 1        /frames/dusk/frame_
  *    Prod mobile (≤768px):
- *      - Project 1 (Adma Cliff House):  frames 1..80   /frames-mobile/adma-cliff-house-9-6/frame_
- *      - Project 3 (Adma 527):          frames 1..60   /frames-mobile/adma-527-9-16-webp/frame_
+ *      - Project 1 (Adma Cliff House):  frames 1..18   /frames-mobile/adma-cliff-house-9-6/frame_
  *    Dev desktop (keep Mac fast):
  *      - Project 1: frames 1..5
  *      - Project 2: frames 1..3
@@ -82,15 +81,7 @@ function buildPreloadPlan(isMobile: boolean): PreloadBatch[] {
     ];
   }
   if (isMobile) {
-    return [
-      { framePath: FRAME_PATHS_MOBILE.adma, start: 1, count: 80 },
-      {
-        framePath: FRAME_PATHS_MOBILE.adma527,
-        start: 1,
-        count: 60,
-        extension: "webp",
-      },
-    ];
+    return [{ framePath: FRAME_PATHS_MOBILE.adma, start: 1, count: 18 }];
   }
   return [
     { framePath: FRAME_PATHS.adma, start: 1, count: 60 },
