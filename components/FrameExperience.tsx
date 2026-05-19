@@ -12,11 +12,81 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 const INITIAL_PRELOAD = 5;
 const NEARBY_RADIUS = 4;
 const IDLE_BATCH_SIZE = 12;
-/** Preload full sequence when section is within ~1.5 viewports (mobile only). */
-const MOBILE_PRELOAD_ROOT_MARGIN = "150% 0px";
+/** Preload full sequence when section is near viewport (mobile only). */
+const MOBILE_PRELOAD_ROOT_MARGIN = "500% 0px";
 const MOBILE_PRELOAD_THRESHOLD = 0.01;
+const MOBILE_WARMUP_FRAME_COUNT = 20;
+const MOBILE_WARMUP_CONCURRENCY = 2;
 
 const isDev = process.env.NODE_ENV === "development";
+
+/** Mobile-only: warmup first frames of the next project (HTTP cache, no Image retention). */
+const MOBILE_NEXT_WARMUP: Record<string, { framePath: string; label: string }> =
+  {
+    "bekish-experience": {
+      framePath: "/frames-mobile/adma-527-9-16/frame_",
+      label: "adma527-experience",
+    },
+    "adma527-experience": {
+      framePath: "/frames-mobile/adma-514-9-16/frame_",
+      label: "adma514-experience",
+    },
+    "adma514-experience": {
+      framePath: "/frames-mobile/dusk-9-16/frame_",
+      label: "dusk-experience",
+    },
+  };
+
+const mobileWarmupStarted = new Set<string>();
+
+function loadWarmupFrame(url: string): Promise<void> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const finish = () => {
+      img.onload = null;
+      img.onerror = null;
+      resolve();
+    };
+    img.onload = finish;
+    img.onerror = finish;
+    img.decoding = "async";
+    img.src = url;
+  });
+}
+
+async function runMobileNextWarmup(
+  fromId: string,
+  framePath: string,
+  count: number,
+  toLabel: string,
+): Promise<void> {
+  const key = `${framePath}:${count}`;
+  if (mobileWarmupStarted.has(key)) return;
+  mobileWarmupStarted.add(key);
+
+  if (isDev) {
+    console.log(`[FrameExperience] warmup next: ${fromId} -> ${toLabel}`);
+  }
+
+  const urls = Array.from({ length: count }, (_, i) =>
+    getFrameSrc(framePath, i + 1),
+  );
+  let cursor = 0;
+
+  const worker = async () => {
+    while (cursor < urls.length) {
+      const index = cursor;
+      cursor += 1;
+      await loadWarmupFrame(urls[index]!);
+    }
+  };
+
+  const workers = Array.from(
+    { length: MOBILE_WARMUP_CONCURRENCY },
+    () => worker(),
+  );
+  await Promise.all(workers);
+}
 
 type PanelState = "hero" | number;
 
@@ -150,9 +220,13 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [useMobileFrames, setUseMobileFrames] = useState(false);
   const [isPreloadAllowed, setIsPreloadAllowed] = useState(false);
+  const [framePathResolved, setFramePathResolved] = useState(false);
   const fullPreloadStartedRef = useRef(false);
   const idlePreloadCancelledRef = useRef(false);
   const mobileHintsPreloadedRef = useRef(false);
+  const isPreloadAllowedRef = useRef(false);
+  const firstStrictFrameAppliedRef = useRef(false);
+  const nextWarmupTriggeredRef = useRef(false);
 
   const activeFrameConfig = useMemo(
     () => buildActiveFrameConfig(config, useMobileFrames),
@@ -218,6 +292,10 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
           displayedSrcRef.current = url;
           lastGoodFrameRef.current = frame;
           frameRef.current = frame;
+          if (isDev && !firstStrictFrameAppliedRef.current) {
+            firstStrictFrameAppliedRef.current = true;
+            console.log(`[FrameExperience] first strict frame applied: ${id}`);
+          }
         };
 
         void img.decode?.().then(commitSwap).catch(commitSwap);
@@ -241,6 +319,9 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
       };
       img.onerror = () => {
         if (pendingFrameRef.current !== clamped) return;
+        if (isDev) {
+          console.log(`[FrameExperience] frame load failed: ${id} ${src}`);
+        }
         const fallback = lastGoodFrameRef.current;
         if (fallback < firstFrame || fallback > lastFrame) return;
         const fallbackSrc = getFrameSrc(activeFramePath, fallback);
@@ -250,7 +331,7 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
         }
       };
     },
-    [activeFramePath, firstFrame, lastFrame, getActiveCache],
+    [activeFramePath, firstFrame, lastFrame, getActiveCache, id],
   );
 
   const preloadNearby = useCallback(
@@ -325,16 +406,49 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
     return () => mq.removeEventListener("change", updateViewport);
   }, []);
 
+  const triggerNextWarmup = useCallback(() => {
+    if (!isMobileViewport) return;
+    if (nextWarmupTriggeredRef.current) return;
+
+    const next = MOBILE_NEXT_WARMUP[id];
+    if (!next) return;
+
+    nextWarmupTriggeredRef.current = true;
+    void runMobileNextWarmup(id, next.framePath, MOBILE_WARMUP_FRAME_COUNT, next.label);
+  }, [id, isMobileViewport]);
+
+  const allowFullPreload = useCallback(
+    (source: "io" | "scroll" = "io") => {
+      const alreadyAllowed = isPreloadAllowedRef.current;
+      if (!alreadyAllowed) {
+        isPreloadAllowedRef.current = true;
+        setIsPreloadAllowed(true);
+        if (isDev) {
+          if (source === "scroll") {
+            console.log(`[FrameExperience] scroll forced preload: ${id}`);
+          } else {
+            console.log(`[FrameExperience] preload allowed: ${id}`);
+          }
+        }
+        triggerNextWarmup();
+      }
+    },
+    [id, triggerNextWarmup],
+  );
+
   useEffect(() => {
     if (!isMobileViewport) {
+      isPreloadAllowedRef.current = true;
       setIsPreloadAllowed(true);
       return;
     }
 
+    isPreloadAllowedRef.current = false;
+    setIsPreloadAllowed(false);
+
     const section = sectionRef.current;
     if (!section) return;
 
-    setIsPreloadAllowed(false);
     if (isDev) {
       console.log(`[FrameExperience] preload deferred: ${id}`);
     }
@@ -342,13 +456,7 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry?.isIntersecting) return;
-        setIsPreloadAllowed((prev) => {
-          if (prev) return prev;
-          if (isDev) {
-            console.log(`[FrameExperience] preload allowed: ${id}`);
-          }
-          return true;
-        });
+        allowFullPreload();
       },
       {
         root: null,
@@ -359,36 +467,62 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
 
     observer.observe(section);
     return () => observer.disconnect();
-  }, [isMobileViewport, id]);
+  }, [isMobileViewport, id, allowFullPreload]);
 
   useEffect(() => {
     fullPreloadStartedRef.current = false;
     mobileHintsPreloadedRef.current = false;
     idlePreloadCancelledRef.current = true;
+    firstStrictFrameAppliedRef.current = false;
   }, [activeFramePath]);
 
   useEffect(() => {
     if (!isMobileViewport || !mobileFramePath) {
       setUseMobileFrames(false);
+      setFramePathResolved(true);
       return;
     }
 
+    setFramePathResolved(false);
     let cancelled = false;
     const probe = new Image();
-    probe.src = getFrameSrc(mobileFramePath, config.startFrame ?? 1);
+    const mobileSrc = getFrameSrc(mobileFramePath, config.startFrame ?? 1);
+    probe.src = mobileSrc;
     probe.onload = () => {
-      if (!cancelled) setUseMobileFrames(true);
+      if (cancelled) return;
+      setUseMobileFrames(true);
+      setFramePathResolved(true);
+      if (isDev) {
+        console.log(
+          `[FrameExperience] mobile path: ${id} ${mobileFramePath} ${config.mobileTotalFrames ?? config.totalFrames}`,
+        );
+        console.log(`[FrameExperience] frame 1 ok: ${id}`);
+      }
     };
     probe.onerror = () => {
-      if (!cancelled) setUseMobileFrames(false);
+      if (cancelled) return;
+      setUseMobileFrames(false);
+      setFramePathResolved(true);
+      if (isDev) {
+        console.log(`[FrameExperience] frame load failed: ${id} ${mobileSrc}`);
+      }
     };
 
     return () => {
       cancelled = true;
     };
-  }, [isMobileViewport, mobileFramePath, config.startFrame]);
+  }, [
+    isMobileViewport,
+    mobileFramePath,
+    config.startFrame,
+    config.mobileTotalFrames,
+    config.totalFrames,
+    id,
+  ]);
 
   useEffect(() => {
+    if (!framePathResolved) return;
+
     let cancelled = false;
 
     if (!strictAntiFlicker) {
@@ -397,40 +531,44 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
     }
 
     const probe = new Image();
-    probe.src = getFrameSrc(activeFramePath, firstFrame);
+    const probeSrc = getFrameSrc(activeFramePath, firstFrame);
+    probe.src = probeSrc;
     probe.onload = () => {
       if (cancelled) return;
       setFramesAvailable(true);
-
-      if (strictAntiFlicker && displayedSrcRef.current) {
-        const remapped = frameIndexFromProgress(
-          progressRef.current,
-          activeFrameConfig,
-        );
-        pendingFrameRef.current = remapped;
-        applyFrame(remapped);
-      } else {
-        pendingFrameRef.current = firstFrame;
-        frameRef.current = firstFrame;
-        lastGoodFrameRef.current = firstFrame;
-        applyFrame(firstFrame);
+      if (isDev) {
+        console.log(`[FrameExperience] framesAvailable: ${id}`);
       }
+
+      const frame =
+        progressRef.current > 0
+          ? frameIndexFromProgress(progressRef.current, activeFrameConfig)
+          : firstFrame;
+      pendingFrameRef.current = frame;
+      frameRef.current = frame;
+      lastGoodFrameRef.current = frame;
+      applyFrame(frame);
 
       ScrollTrigger.refresh();
     };
     probe.onerror = () => {
-      if (!cancelled) setFramesAvailable(false);
+      if (cancelled) return;
+      if (isDev) {
+        console.log(`[FrameExperience] frame load failed: ${id} ${probeSrc}`);
+      }
+      setFramesAvailable(false);
     };
     return () => {
       cancelled = true;
     };
   }, [
+    framePathResolved,
     activeFramePath,
     activeFrameConfig,
     applyFrame,
     firstFrame,
-    useMobileFrames,
     strictAntiFlicker,
+    id,
   ]);
 
   useEffect(() => {
@@ -525,6 +663,9 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
         invalidateOnRefresh: true,
         onUpdate: (self) => {
           progressRef.current = self.progress;
+          if (isMobileViewport && self.progress > 0) {
+            allowFullPreload("scroll");
+          }
         },
       });
     }, section);
@@ -561,7 +702,15 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
       window.removeEventListener("resize", onResize);
       window.removeEventListener("orientationchange", onResize);
     };
-  }, [framesAvailable, config, activeFrameConfig, preloadNearby, applyFrame]);
+  }, [
+    framesAvailable,
+    config,
+    activeFrameConfig,
+    preloadNearby,
+    applyFrame,
+    isMobileViewport,
+    allowFullPreload,
+  ]);
 
   return (
     <section
