@@ -1,6 +1,6 @@
 import {
   acquireMobileVideoPrepare,
-  isMobileVideoAllowContinue,
+  isMobileVideoAutoContinue,
   type VideoReadinessSnapshot,
 } from "@/lib/mobile-video-readiness";
 import { useEffect, useState } from "react";
@@ -8,7 +8,11 @@ import { useEffect, useState } from "react";
 export function useVideoReadyGate(
   videoSrc: string,
   enabled: boolean,
-): VideoReadinessSnapshot & { allowContinue: boolean } {
+  manualContinue: boolean,
+): VideoReadinessSnapshot & {
+  allowContinue: boolean;
+  showContinueAnyway: boolean;
+} {
   const [snapshot, setSnapshot] = useState<VideoReadinessSnapshot>({
     ready: false,
     progress: 0,
@@ -24,8 +28,13 @@ export function useVideoReadyGate(
     return subscribe(setSnapshot);
   }, [videoSrc, enabled]);
 
+  const autoContinue = isMobileVideoAutoContinue(snapshot);
+  const showContinueAnyway =
+    snapshot.timedOut && !snapshot.ready && !snapshot.error;
+
   return {
     ...snapshot,
-    allowContinue: isMobileVideoAllowContinue(snapshot),
+    showContinueAnyway,
+    allowContinue: autoContinue || manualContinue,
   };
 }

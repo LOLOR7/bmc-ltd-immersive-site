@@ -4,11 +4,15 @@ import MobileProjectIntro from "@/components/MobileProjectIntro";
 import MobileProjectProgress from "@/components/MobileProjectProgress";
 import VideoScrollExperience from "@/components/VideoScrollExperience";
 import { MOBILE_VIDEO_PROJECTS } from "@/lib/mobile-video-projects";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useCallback, useEffect, useState } from "react";
 
 export default function MobileVideoJourney() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [gateLoadingIndex, setGateLoadingIndex] = useState<number | null>(null);
+  const [unlockedProjects, setUnlockedProjects] = useState<Set<number>>(
+    () => new Set(),
+  );
 
   const handleGateActiveChange = useCallback(
     (projectIndex: number, active: boolean) => {
@@ -19,6 +23,16 @@ export default function MobileVideoJourney() {
     },
     [],
   );
+
+  const handleUnlocked = useCallback((projectIndex: number) => {
+    setUnlockedProjects((prev) => {
+      if (prev.has(projectIndex)) return prev;
+      const next = new Set(prev);
+      next.add(projectIndex);
+      return next;
+    });
+    requestAnimationFrame(() => ScrollTrigger.refresh());
+  }, []);
 
   useEffect(() => {
     const sections = document.querySelectorAll<HTMLElement>(
@@ -67,28 +81,34 @@ export default function MobileVideoJourney() {
         activeIndex={activeIndex}
         isGateLoading={gateLoadingIndex === activeIndex}
       />
-      {MOBILE_VIDEO_PROJECTS.map((project) => (
-        <div key={project.slug}>
-          <MobileProjectIntro
-            projectIndex={project.index}
-            title={project.title}
-            description={project.introDescription}
-            videoSrc={project.videoSrc}
-            onGateActiveChange={(active) =>
-              handleGateActiveChange(project.index, active)
-            }
-          />
-          <div
-            data-mobile-project-index={project.index}
-            data-mobile-journey-section="video"
-          >
-            <VideoScrollExperience
-              config={project.config}
+      {MOBILE_VIDEO_PROJECTS.map((project) => {
+        const isUnlocked = unlockedProjects.has(project.index);
+
+        return (
+          <div key={project.slug}>
+            <MobileProjectIntro
+              projectIndex={project.index}
+              title={project.title}
+              description={project.introDescription}
               videoSrc={project.videoSrc}
+              onGateActiveChange={(active) =>
+                handleGateActiveChange(project.index, active)
+              }
+              onUnlocked={() => handleUnlocked(project.index)}
             />
+            <div
+              data-mobile-project-index={project.index}
+              data-mobile-journey-section="video"
+              {...(!isUnlocked ? { inert: true as const } : {})}
+            >
+              <VideoScrollExperience
+                config={project.config}
+                videoSrc={project.videoSrc}
+              />
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </>
   );
 }

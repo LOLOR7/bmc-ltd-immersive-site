@@ -30,6 +30,7 @@ export default function SmoothScroll({ children }: SmoothScrollProps) {
     });
 
     lenis.on("scroll", ScrollTrigger.update);
+    window.__bmcLenis = lenis;
 
     const onTick = (time: number) => {
       lenis.raf(time * 1000);
@@ -40,6 +41,7 @@ export default function SmoothScroll({ children }: SmoothScrollProps) {
 
     return () => {
       gsap.ticker.remove(onTick);
+      delete window.__bmcLenis;
       lenis.destroy();
     };
   }, []);

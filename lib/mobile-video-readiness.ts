@@ -1,5 +1,6 @@
 export const MIN_BUFFER_SECONDS = 3;
-export const MAX_GATE_WAIT_MS = 12000;
+/** After this, show “Continue anyway” — does NOT auto-unlock scroll. */
+export const MAX_GATE_WAIT_MS = 28000;
 
 export type VideoReadinessSnapshot = {
   ready: boolean;
@@ -7,6 +8,7 @@ export type VideoReadinessSnapshot = {
   error: boolean;
   bufferedSeconds: number;
   readyState: number;
+  /** True after MAX_GATE_WAIT_MS — enables manual continue only. */
   timedOut: boolean;
 };
 
@@ -50,7 +52,6 @@ function computeSnapshot(
 
   const ready =
     !error &&
-    !timedOut &&
     readyState >= HTMLMediaElement.HAVE_FUTURE_DATA &&
     (bufferedSeconds >= MIN_BUFFER_SECONDS ||
       (readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA &&
@@ -59,7 +60,7 @@ function computeSnapshot(
   let progress = 0;
   if (error) {
     progress = 0;
-  } else if (ready || timedOut) {
+  } else if (ready) {
     progress = 1;
   } else {
     const meta = readyState >= HTMLMediaElement.HAVE_METADATA ? 0.2 : 0;
@@ -154,7 +155,11 @@ export function acquireMobileVideoPrepare(src: string): {
     video.addEventListener("canplay", update);
     video.addEventListener("progress", update);
     video.addEventListener("error", () => {
-      entry!.snapshot = computeSnapshot(entry!.video, true, entry!.snapshot.timedOut);
+      entry!.snapshot = computeSnapshot(
+        entry!.video,
+        true,
+        entry!.snapshot.timedOut,
+      );
       notifyEntry(entry!);
     });
 
@@ -172,15 +177,15 @@ export function acquireMobileVideoPrepare(src: string): {
   };
 }
 
-/** @deprecated use acquireMobileVideoPrepare */
 export function preloadMobileVideo(src: string): void {
   acquireMobileVideoPrepare(src);
 }
 
-export function isMobileVideoAllowContinue(
+/** Auto-unlock only when video is actually ready or failed — NOT on timeout. */
+export function isMobileVideoAutoContinue(
   snapshot: VideoReadinessSnapshot,
 ): boolean {
-  return snapshot.ready || snapshot.timedOut || snapshot.error;
+  return snapshot.ready || snapshot.error;
 }
 
 /** BootLoader — warm first mobile video instead of frames. */
@@ -204,7 +209,7 @@ export function warmMobileVideoForBoot(
     };
 
     const unsub = subscribe((snap) => {
-      if (snap.ready || snap.error || snap.timedOut) finish();
+      if (snap.ready || snap.error) finish();
     });
 
     const timer = window.setTimeout(finish, maxMs);
