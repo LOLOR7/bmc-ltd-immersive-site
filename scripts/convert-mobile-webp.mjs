@@ -1,7 +1,7 @@
 /**
  * Mobile JPG → WebP q80 @ 1080×1920.
  * Usage: node scripts/convert-mobile-webp.mjs <slug>
- * Slugs: adma527 | adma514 | dusk
+ * Slugs: adma | bekish | adma527 | adma514 | dusk
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -9,6 +9,16 @@ import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 
 const PROJECTS = {
+  adma: {
+    src: "public/frames-mobile/adma-cliff-house-9-6",
+    dst: "public/frames-mobile/adma-cliff-house-9-6-webp",
+    total: 433,
+  },
+  bekish: {
+    src: "public/frames-mobile/bekish-6358-9-16",
+    dst: "public/frames-mobile/bekish-6358-9-16-webp",
+    total: 380,
+  },
   adma527: {
     src: "public/frames-mobile/adma-527-9-16",
     dst: "public/frames-mobile/adma-527-9-16-webp",
@@ -29,7 +39,9 @@ const PROJECTS = {
 const slug = process.argv[2];
 const project = PROJECTS[slug];
 if (!project) {
-  console.error("Usage: node scripts/convert-mobile-webp.mjs <adma527|adma514|dusk>");
+  console.error(
+    "Usage: node scripts/convert-mobile-webp.mjs <adma|bekish|adma527|adma514|dusk>",
+  );
   process.exit(1);
 }
 

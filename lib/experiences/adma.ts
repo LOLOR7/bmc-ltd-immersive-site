@@ -19,7 +19,8 @@ export const ADMA_EXPERIENCE: FrameExperienceConfig = {
   hint: "Scroll to explore",
   scenes: [SCENE_1, SCENE_2, SCENE_3],
   framePath: "/frames/frame_",
-  mobileFramePath: "/frames-mobile/adma-cliff-house-9-6/frame_",
+  mobileFramePath: "/frames-mobile/adma-cliff-house-9-6-webp/frame_",
+  mobileFrameExtension: "webp",
   totalFrames: 577,
   mobileTotalFrames: 433,
   /** Warm scene 2→3 transition on mobile (~frame 289). */
