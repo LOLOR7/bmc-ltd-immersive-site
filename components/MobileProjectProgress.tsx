@@ -4,10 +4,12 @@ import { MOBILE_VIDEO_PROJECT_COUNT } from "@/lib/mobile-video-projects";
 
 type MobileProjectProgressProps = {
   activeIndex: number;
+  isGateLoading?: boolean;
 };
 
 export default function MobileProjectProgress({
   activeIndex,
+  isGateLoading = false,
 }: MobileProjectProgressProps) {
   const clamped = Math.min(
     MOBILE_VIDEO_PROJECT_COUNT - 1,
@@ -31,7 +33,7 @@ export default function MobileProjectProgress({
               i < clamped
                 ? " mobile-project-progress__segment--past"
                 : i === clamped
-                  ? " mobile-project-progress__segment--active"
+                  ? ` mobile-project-progress__segment--active${isGateLoading ? " mobile-project-progress__segment--loading" : ""}`
                   : ""
             }`}
           />

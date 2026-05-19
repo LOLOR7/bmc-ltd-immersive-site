@@ -4,10 +4,21 @@ import MobileProjectIntro from "@/components/MobileProjectIntro";
 import MobileProjectProgress from "@/components/MobileProjectProgress";
 import VideoScrollExperience from "@/components/VideoScrollExperience";
 import { MOBILE_VIDEO_PROJECTS } from "@/lib/mobile-video-projects";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export default function MobileVideoJourney() {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [gateLoadingIndex, setGateLoadingIndex] = useState<number | null>(null);
+
+  const handleGateActiveChange = useCallback(
+    (projectIndex: number, active: boolean) => {
+      setGateLoadingIndex((prev) => {
+        if (active) return projectIndex;
+        return prev === projectIndex ? null : prev;
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     const sections = document.querySelectorAll<HTMLElement>(
@@ -52,7 +63,10 @@ export default function MobileVideoJourney() {
 
   return (
     <>
-      <MobileProjectProgress activeIndex={activeIndex} />
+      <MobileProjectProgress
+        activeIndex={activeIndex}
+        isGateLoading={gateLoadingIndex === activeIndex}
+      />
       {MOBILE_VIDEO_PROJECTS.map((project) => (
         <div key={project.slug}>
           <MobileProjectIntro
@@ -60,6 +74,9 @@ export default function MobileVideoJourney() {
             title={project.title}
             description={project.introDescription}
             videoSrc={project.videoSrc}
+            onGateActiveChange={(active) =>
+              handleGateActiveChange(project.index, active)
+            }
           />
           <div
             data-mobile-project-index={project.index}

@@ -11,13 +11,13 @@
  *      - Project 4 (Adma 514):          frame 1        /frames/adma-514/frame_
  *      - Project 5 (Dusk):              frame 1        /frames/dusk/frame_
  *    Prod mobile (≤768px):
- *      - Project 1 (Adma Cliff House):  frames 1..45   /frames-mobile/adma-cliff-house-9-6-webp/frame_
- *      - Project 2 (Bekish):            frames 1..30   /frames-mobile/bekish-6358-9-16-webp/frame_
+ *      - First scroll video only: /videos/adma-cliff-mobile-scroll.mp4
+ *      - No mobile frame preload (home uses VideoScrollExperience)
  *    Dev desktop (keep Mac fast):
  *      - Project 1: frames 1..5
  *      - Project 2: frames 1..3
  *    Dev mobile:
- *      - Project 1 mobile: frames 1..5
+ *      - First scroll video only (same as prod mobile)
  *
  *  Max 3 concurrent requests. No Map/Set. No idle batch. No requestIdleCallback.
  *
@@ -33,6 +33,8 @@
 
 import BootLoaderProjectCarousel from "@/components/BootLoaderProjectCarousel";
 import { BOOT_LOADER_CAROUSEL_IMAGES } from "@/lib/project-details";
+import { HOME_VIDEO_SCROLL } from "@/lib/home-video-scroll";
+import { warmMobileVideoForBoot } from "@/lib/mobile-video-readiness";
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, UIEvent } from "react";
 
@@ -59,12 +61,6 @@ const FRAME_PATHS = {
   dusk: "/frames/dusk/frame_",
 } as const;
 
-const FRAME_PATHS_MOBILE = {
-  adma: "/frames-mobile/adma-cliff-house-9-6-webp/frame_",
-  bekish: "/frames-mobile/bekish-6358-9-16-webp/frame_",
-  adma527: "/frames-mobile/adma-527-9-16-webp/frame_",
-} as const;
-
 type PreloadBatch = {
   framePath: string;
   start: number;
@@ -73,36 +69,13 @@ type PreloadBatch = {
 };
 
 function buildPreloadPlan(isMobile: boolean): PreloadBatch[] {
+  if (isMobile) {
+    return [];
+  }
   if (isDev) {
-    if (isMobile) {
-      return [
-        {
-          framePath: FRAME_PATHS_MOBILE.adma,
-          start: 1,
-          count: 5,
-          extension: "webp",
-        },
-      ];
-    }
     return [
       { framePath: FRAME_PATHS.adma, start: 1, count: 5 },
       { framePath: FRAME_PATHS.bekish, start: 1, count: 3 },
-    ];
-  }
-  if (isMobile) {
-    return [
-      {
-        framePath: FRAME_PATHS_MOBILE.adma,
-        start: 1,
-        count: 45,
-        extension: "webp",
-      },
-      {
-        framePath: FRAME_PATHS_MOBILE.bekish,
-        start: 1,
-        count: 30,
-        extension: "webp",
-      },
     ];
   }
   return [
@@ -239,7 +212,9 @@ export default function BootLoader() {
 
     const isMobile = window.matchMedia("(max-width: 768px)").matches;
     const preloadPlan = buildPreloadPlan(isMobile);
-    const totalPreloadCount = preloadPlan.reduce((sum, b) => sum + b.count, 0);
+    const totalPreloadCount = isMobile
+      ? 1
+      : preloadPlan.reduce((sum, b) => sum + b.count, 0);
 
     if (isDev) {
       console.log("[BootLoader] mounted", {
@@ -396,20 +371,36 @@ export default function BootLoader() {
 
     if (isDev) console.log("[BootLoader] preload started");
 
-    void preloadUrls(preloadUrlsList, abortCtrl.signal, () => {
-      loadedCount += 1;
-      if (isDev) {
-        console.log(
-          `[BootLoader] preload progress ${loadedCount}/${totalPreloadCount}`,
-        );
-      }
-      updateProgress();
-    }).then(() => {
+    const finishPreload = () => {
       preloadDoneRef.current = true;
       if (isDev) console.log("[BootLoader] critical preload done");
       markMinVisibleIfDue();
       tryClose("preload-done");
-    });
+    };
+
+    if (isMobile) {
+      void warmMobileVideoForBoot(
+        HOME_VIDEO_SCROLL.admaCliff,
+        abortCtrl.signal,
+      ).then(() => {
+        loadedCount = 1;
+        if (isDev) {
+          console.log("[BootLoader] mobile first video warmed");
+        }
+        updateProgress();
+        finishPreload();
+      });
+    } else {
+      void preloadUrls(preloadUrlsList, abortCtrl.signal, () => {
+        loadedCount += 1;
+        if (isDev) {
+          console.log(
+            `[BootLoader] preload progress ${loadedCount}/${totalPreloadCount}`,
+          );
+        }
+        updateProgress();
+      }).then(finishPreload);
+    }
 
     return () => {
       abortCtrl.abort();

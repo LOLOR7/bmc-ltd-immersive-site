@@ -330,6 +330,60 @@ body {
   color: rgba(245, 240, 230, 0.52);
 }
 
+.mobile-project-intro__gate {
+  margin-top: 2rem;
+}
+
+.mobile-project-intro__gate-track {
+  width: 100%;
+  max-width: 14rem;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 1px;
+  background: rgba(245, 240, 230, 0.1);
+}
+
+.mobile-project-intro__gate-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    rgba(245, 240, 230, 0.35),
+    rgba(245, 240, 230, 0.72)
+  );
+  transition: width 0.35s ease;
+}
+
+.mobile-project-intro--gated .mobile-project-intro__inner {
+  min-height: calc(100dvh - clamp(3rem, 10vw, 5rem));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.mobile-project-intro__preparing--ready {
+  color: rgba(245, 240, 230, 0.52);
+}
+
+.mobile-project-intro__preparing--error {
+  color: rgba(245, 200, 180, 0.55);
+}
+
+.mobile-project-progress__segment--loading {
+  animation: mobile-progress-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes mobile-progress-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 .mobile-project-intro__preparing {
   display: flex;
   align-items: center;
