@@ -35,3 +35,4 @@ yarn-error.log*
 *.tsbuildinfo
 # heavy source videos
 public/videos/*.mp4
+!public/videos/adma-527-mobile-scroll-poc.mp4

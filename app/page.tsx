@@ -1,6 +1,7 @@
 import FinalSection from "@/components/FinalSection";
 import FrameExperience from "@/components/FrameExperience";
 import Header from "@/components/Header";
+import VideoScrollExperience from "@/components/VideoScrollExperience";
 import IntroBrandHero from "@/components/IntroBrandHero";
 import TransitionSection from "@/components/TransitionSection";
 import { ADMA_EXPERIENCE } from "@/lib/experiences/adma";
@@ -53,6 +54,7 @@ export default function Home() {
         ariaLabel="Before Dusk"
       />
       <FrameExperience config={DUSK_EXPERIENCE} />
+      <VideoScrollExperience />
       <FinalSection />
     </main>
   );
