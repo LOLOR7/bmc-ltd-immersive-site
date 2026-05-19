@@ -12,7 +12,7 @@
  *      - Project 5 (Dusk):              frame 1        /frames/dusk/frame_
  *    Prod mobile (≤768px):
  *      - Project 1 (Adma Cliff House):  frames 1..80   /frames-mobile/adma-cliff-house-9-6/frame_
- *      - Project 3 (Adma 527):          frames 1..60   /frames-mobile/adma-527-9-16/frame_
+ *      - Project 3 (Adma 527):          frames 1..60   /frames-mobile/adma-527-9-16-webp/frame_
  *    Dev desktop (keep Mac fast):
  *      - Project 1: frames 1..5
  *      - Project 2: frames 1..3
@@ -61,13 +61,14 @@ const FRAME_PATHS = {
 
 const FRAME_PATHS_MOBILE = {
   adma: "/frames-mobile/adma-cliff-house-9-6/frame_",
-  adma527: "/frames-mobile/adma-527-9-16/frame_",
+  adma527: "/frames-mobile/adma-527-9-16-webp/frame_",
 } as const;
 
 type PreloadBatch = {
   framePath: string;
   start: number;
   count: number;
+  extension?: "jpg" | "webp";
 };
 
 function buildPreloadPlan(isMobile: boolean): PreloadBatch[] {
@@ -83,7 +84,12 @@ function buildPreloadPlan(isMobile: boolean): PreloadBatch[] {
   if (isMobile) {
     return [
       { framePath: FRAME_PATHS_MOBILE.adma, start: 1, count: 80 },
-      { framePath: FRAME_PATHS_MOBILE.adma527, start: 1, count: 60 },
+      {
+        framePath: FRAME_PATHS_MOBILE.adma527,
+        start: 1,
+        count: 60,
+        extension: "webp",
+      },
     ];
   }
   return [
@@ -99,7 +105,10 @@ function buildPreloadUrls(plan: PreloadBatch[]): string[] {
   const urls: string[] = [];
   for (const batch of plan) {
     for (let i = 0; i < batch.count; i++) {
-      urls.push(`${batch.framePath}${String(batch.start + i).padStart(4, "0")}.jpg`);
+      const ext = batch.extension ?? "jpg";
+      urls.push(
+        `${batch.framePath}${String(batch.start + i).padStart(4, "0")}.${ext}`,
+      );
     }
   }
   return urls;

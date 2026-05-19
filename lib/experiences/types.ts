@@ -21,6 +21,10 @@ export type FrameExperienceConfig = {
   framePath: string;
   /** Optional mobile frame sequence (e.g. /frames-mobile/dusk/frame_) */
   mobileFramePath?: string;
+  /** Mobile frame file extension (default jpg) */
+  mobileFrameExtension?: "jpg" | "webp";
+  /** Active frame extension when mobile path is selected (set internally) */
+  frameExtension?: "jpg" | "webp";
   totalFrames: number;
   /** Frame count for mobile sequence when it differs from desktop */
   mobileTotalFrames?: number;

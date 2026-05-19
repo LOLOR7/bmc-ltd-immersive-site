@@ -27,11 +27,14 @@ const MOBILE_WARMUP_CONCURRENCY = 2;
 const isDev = process.env.NODE_ENV === "development";
 
 /** Mobile-only: warmup first frames of the next project (HTTP cache, no Image retention). */
-const MOBILE_NEXT_WARMUP: Record<string, { framePath: string; label: string }> =
-  {
+const MOBILE_NEXT_WARMUP: Record<
+  string,
+  { framePath: string; label: string; extension?: "jpg" | "webp" }
+> = {
     "bekish-experience": {
-      framePath: "/frames-mobile/adma-527-9-16/frame_",
+      framePath: "/frames-mobile/adma-527-9-16-webp/frame_",
       label: "adma527-experience",
+      extension: "webp",
     },
     "adma527-experience": {
       framePath: "/frames-mobile/adma-514-9-16/frame_",
@@ -65,6 +68,7 @@ async function runMobileNextWarmup(
   framePath: string,
   count: number,
   toLabel: string,
+  extension: "jpg" | "webp" = "jpg",
 ): Promise<void> {
   const key = `${framePath}:${count}`;
   if (mobileWarmupStarted.has(key)) return;
@@ -75,7 +79,7 @@ async function runMobileNextWarmup(
   }
 
   const urls = Array.from({ length: count }, (_, i) =>
-    getFrameSrc(framePath, i + 1),
+    getFrameSrc(framePath, i + 1, extension),
   );
   let cursor = 0;
 
@@ -96,8 +100,12 @@ async function runMobileNextWarmup(
 
 type PanelState = "hero" | number;
 
-export function getFrameSrc(framePath: string, index: number): string {
-  return `${framePath}${String(index).padStart(4, "0")}.jpg`;
+export function getFrameSrc(
+  framePath: string,
+  index: number,
+  extension: "jpg" | "webp" = "jpg",
+): string {
+  return `${framePath}${String(index).padStart(4, "0")}.${extension}`;
 }
 
 function resolvePanel(
@@ -131,6 +139,7 @@ function buildActiveFrameConfig(
     ...config,
     framePath: config.mobileFramePath,
     totalFrames: config.mobileTotalFrames ?? config.totalFrames,
+    frameExtension: config.mobileFrameExtension ?? "jpg",
   };
 }
 
@@ -243,7 +252,8 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
     activeFrameConfig.totalFrames,
   );
   const activeFramePath = activeFrameConfig.framePath;
-  const initialSrc = getFrameSrc(activeFramePath, firstFrame);
+  const activeFrameExtension = activeFrameConfig.frameExtension ?? "jpg";
+  const initialSrc = getFrameSrc(activeFramePath, firstFrame, activeFrameExtension);
 
   const getActiveCache = useCallback((): Map<number, HTMLImageElement> => {
     if (!strictAntiFlicker) {
@@ -268,10 +278,10 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
       }
       const img = new Image();
       img.decoding = "async";
-      img.src = getFrameSrc(activeFramePath, index);
+      img.src = getFrameSrc(activeFramePath, index, activeFrameExtension);
       cache.set(index, img);
     },
-    [activeFramePath, firstFrame, lastFrame, getActiveCache],
+    [activeFramePath, activeFrameExtension, firstFrame, lastFrame, getActiveCache],
   );
 
   const applyFrameStrict = useCallback(
@@ -279,7 +289,7 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
       const clamped = Math.min(lastFrame, Math.max(firstFrame, index));
       pendingFrameRef.current = clamped;
 
-      const src = getFrameSrc(activeFramePath, clamped);
+      const src = getFrameSrc(activeFramePath, clamped, activeFrameExtension);
       const cache = getActiveCache();
       const cached = cache.get(clamped);
 
@@ -330,14 +340,18 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
         }
         const fallback = lastGoodFrameRef.current;
         if (fallback < firstFrame || fallback > lastFrame) return;
-        const fallbackSrc = getFrameSrc(activeFramePath, fallback);
+        const fallbackSrc = getFrameSrc(
+          activeFramePath,
+          fallback,
+          activeFrameExtension,
+        );
         const fallbackImg = cache.get(fallback);
         if (fallbackImg?.complete && fallbackImg.naturalWidth > 0) {
           swapTo(fallback, fallbackSrc, fallbackImg);
         }
       };
     },
-    [activeFramePath, firstFrame, lastFrame, getActiveCache, id],
+    [activeFramePath, activeFrameExtension, firstFrame, lastFrame, getActiveCache, id],
   );
 
   const preloadNearby = useCallback(
@@ -356,7 +370,7 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
         return;
       }
 
-      const src = getFrameSrc(activeFramePath, index);
+      const src = getFrameSrc(activeFramePath, index, activeFrameExtension);
       const cached = cacheRef.current.get(index);
 
       const commit = (frame: number, url: string) => {
@@ -396,12 +410,16 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
         if (lastGoodFrameRef.current > 0) {
           commit(
             lastGoodFrameRef.current,
-            getFrameSrc(activeFramePath, lastGoodFrameRef.current),
+            getFrameSrc(
+              activeFramePath,
+              lastGoodFrameRef.current,
+              activeFrameExtension,
+            ),
           );
         }
       };
     },
-    [activeFramePath, strictAntiFlicker, applyFrameStrict],
+    [activeFramePath, activeFrameExtension, strictAntiFlicker, applyFrameStrict],
   );
 
   useEffect(() => {
@@ -420,7 +438,13 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
     if (!next) return;
 
     nextWarmupTriggeredRef.current = true;
-    void runMobileNextWarmup(id, next.framePath, MOBILE_WARMUP_FRAME_COUNT, next.label);
+    void runMobileNextWarmup(
+      id,
+      next.framePath,
+      MOBILE_WARMUP_FRAME_COUNT,
+      next.label,
+      next.extension,
+    );
   }, [id, isMobileViewport]);
 
   const allowFullPreload = useCallback(
@@ -499,7 +523,11 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
     setFramePathResolved(false);
     let cancelled = false;
     const probe = new Image();
-    const mobileSrc = getFrameSrc(mobileFramePath, config.startFrame ?? 1);
+    const mobileSrc = getFrameSrc(
+      mobileFramePath,
+      config.startFrame ?? 1,
+      config.mobileFrameExtension ?? "jpg",
+    );
     probe.src = mobileSrc;
     probe.onload = () => {
       if (cancelled) return;
@@ -527,6 +555,7 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
   }, [
     isMobileViewport,
     mobileFramePath,
+    config.mobileFrameExtension,
     config.startFrame,
     config.mobileTotalFrames,
     config.totalFrames,
@@ -544,7 +573,11 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
     }
 
     const probe = new Image();
-    const probeSrc = getFrameSrc(activeFramePath, firstFrame);
+    const probeSrc = getFrameSrc(
+      activeFramePath,
+      firstFrame,
+      activeFrameExtension,
+    );
     probe.src = probeSrc;
     probe.onload = () => {
       if (cancelled) return;
@@ -577,6 +610,7 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
   }, [
     framePathResolved,
     activeFramePath,
+    activeFrameExtension,
     activeFrameConfig,
     applyFrame,
     firstFrame,
