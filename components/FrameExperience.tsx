@@ -37,12 +37,14 @@ const MOBILE_NEXT_WARMUP: Record<
       extension: "webp",
     },
     "adma527-experience": {
-      framePath: "/frames-mobile/adma-514-9-16/frame_",
+      framePath: "/frames-mobile/adma-514-9-16-webp/frame_",
       label: "adma514-experience",
+      extension: "webp",
     },
     "adma514-experience": {
-      framePath: "/frames-mobile/dusk-9-16/frame_",
+      framePath: "/frames-mobile/dusk-9-16-webp/frame_",
       label: "dusk-experience",
+      extension: "webp",
     },
   };
 
