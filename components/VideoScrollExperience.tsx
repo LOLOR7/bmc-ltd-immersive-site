@@ -62,11 +62,17 @@ function applyScrollSeek(
   }
 }
 
-type VideoStatus = "loading" | "ready" | "error";
+type VideoStatus = "idle" | "loading" | "ready" | "error";
 
 type VideoScrollExperienceProps = {
   config: FrameExperienceConfig;
   videoSrc: string;
+  /**
+   * Lazy-load flag from the parent journey. When false, the <video> has no
+   * src — Safari does not preload, no network/buffer cost. Flips true for
+   * prev/active/next projects only (max 3 simultaneous video elements).
+   */
+  shouldLoadVideo: boolean;
 };
 
 function logDev(label: string, video: HTMLVideoElement, experienceId: string) {
@@ -130,6 +136,7 @@ function SceneBlock({
 export default function VideoScrollExperience({
   config,
   videoSrc: videoPath,
+  shouldLoadVideo,
 }: VideoScrollExperienceProps) {
   const {
     id,
@@ -150,24 +157,50 @@ export default function VideoScrollExperience({
   const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressRef = useRef(0);
-  const [resolvedSrc, setResolvedSrc] = useState(videoPath);
-  const [status, setStatus] = useState<VideoStatus>("loading");
+  const [resolvedSrc, setResolvedSrc] = useState<string | null>(null);
+  const [status, setStatus] = useState<VideoStatus>("idle");
   const [activePanel, setActivePanel] = useState<PanelState>("hero");
 
   useEffect(() => {
+    if (!shouldLoadVideo) {
+      setResolvedSrc(null);
+      return;
+    }
     setResolvedSrc(
       typeof window !== "undefined"
         ? new URL(videoPath, window.location.href).href
         : videoPath,
     );
-  }, [videoPath]);
+  }, [videoPath, shouldLoadVideo]);
+
+  /**
+   * Detach pass: when shouldLoadVideo flips to false, free the buffer to
+   * unblock Safari iOS network/memory budget. Done in a dedicated effect so
+   * the main bind effect can early-return when there's no src.
+   */
+  useEffect(() => {
+    if (shouldLoadVideo) return;
+    const video = videoRef.current;
+    if (!video) return;
+    try {
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+    } catch {
+      /* iOS may throw during teardown */
+    }
+    setStatus("idle");
+  }, [shouldLoadVideo]);
 
   useEffect(() => {
+    if (!resolvedSrc) return;
     gsap.registerPlugin(ScrollTrigger);
 
     const section = sectionRef.current;
     const video = videoRef.current;
     if (!section || !video) return;
+
+    setStatus("loading");
 
     let ctx: gsap.Context | undefined;
     let scrollBound = false;
@@ -288,10 +321,10 @@ export default function VideoScrollExperience({
         <video
           ref={videoRef}
           className="frame-image video-scroll-experience__video"
-          src={resolvedSrc}
+          {...(resolvedSrc ? { src: resolvedSrc } : {})}
           muted
           playsInline
-          preload="auto"
+          preload={resolvedSrc ? "auto" : "none"}
           disablePictureInPicture
           controls={false}
           aria-hidden

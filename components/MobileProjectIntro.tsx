@@ -10,6 +10,12 @@ type MobileProjectIntroProps = {
   title: string;
   description: string;
   videoSrc: string;
+  /**
+   * Lazy-prep flag from the parent journey. When false, the gate hook does
+   * not subscribe → no hidden <video> is created for this project. Flips
+   * true when the project becomes active (and optionally the very next one).
+   */
+  shouldPrepareVideo: boolean;
   onGateActiveChange?: (active: boolean) => void;
   onUnlocked?: () => void;
 };
@@ -80,6 +86,7 @@ export default function MobileProjectIntro({
   title,
   description,
   videoSrc,
+  shouldPrepareVideo,
   onGateActiveChange,
   onUnlocked,
 }: MobileProjectIntroProps) {
@@ -90,7 +97,7 @@ export default function MobileProjectIntro({
   const [mounted, setMounted] = useState(false);
 
   const { progress, ready, error, allowContinue, showContinueAnyway } =
-    useVideoReadyGate(videoSrc, true, manualContinue);
+    useVideoReadyGate(videoSrc, shouldPrepareVideo, manualContinue);
 
   const shouldGate = gateEngaged && !hasUnlocked && !allowContinue;
 

@@ -83,6 +83,20 @@ export default function MobileVideoJourney() {
       />
       {MOBILE_VIDEO_PROJECTS.map((project) => {
         const isUnlocked = unlockedProjects.has(project.index);
+        /**
+         * Lazy strict — load video src only for prev / active / next
+         * (max 3 simultaneous <video src> on mobile). Was previously 5
+         * visible + 5 hidden = 10 elements racing for bandwidth.
+         */
+        const shouldLoadVideo =
+          project.index >= activeIndex - 1 && project.index <= activeIndex + 1;
+        /**
+         * Hidden gate prepare — only for the active project (max 1 at a
+         * time). The visible video for next/prev still preloads via the
+         * lazy <video> above, so when user reaches next intro, gate
+         * readiness fires fast via Safari's HTTP cache.
+         */
+        const shouldPrepareVideo = project.index === activeIndex;
 
         return (
           <div key={project.slug}>
@@ -91,6 +105,7 @@ export default function MobileVideoJourney() {
               title={project.title}
               description={project.introDescription}
               videoSrc={project.videoSrc}
+              shouldPrepareVideo={shouldPrepareVideo}
               onGateActiveChange={(active) =>
                 handleGateActiveChange(project.index, active)
               }
@@ -104,6 +119,7 @@ export default function MobileVideoJourney() {
               <VideoScrollExperience
                 config={project.config}
                 videoSrc={project.videoSrc}
+                shouldLoadVideo={shouldLoadVideo}
               />
             </div>
           </div>

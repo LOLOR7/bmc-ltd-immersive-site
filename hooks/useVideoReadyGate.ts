@@ -13,19 +13,24 @@ export function useVideoReadyGate(
   allowContinue: boolean;
   showContinueAnyway: boolean;
 } {
-  const [snapshot, setSnapshot] = useState<VideoReadinessSnapshot>({
+  const initial: VideoReadinessSnapshot = {
     ready: false,
     progress: 0,
     error: false,
     bufferedSeconds: 0,
     readyState: 0,
     timedOut: false,
-  });
+  };
+  const [snapshot, setSnapshot] = useState<VideoReadinessSnapshot>(initial);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      setSnapshot(initial);
+      return;
+    }
     const { subscribe } = acquireMobileVideoPrepare(videoSrc);
     return subscribe(setSnapshot);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoSrc, enabled]);
 
   const autoContinue = isMobileVideoAutoContinue(snapshot);

@@ -1,6 +1,12 @@
 export const MIN_BUFFER_SECONDS = 3;
 /** After this, show “Continue anyway” — does NOT auto-unlock scroll. */
 export const MAX_GATE_WAIT_MS = 28000;
+/**
+ * Grace period before freeing a hidden prepare element after the last
+ * listener unsubscribes. Tolerates BootLoader → MobileProjectIntro handoff
+ * and React StrictMode double-effects without losing the warm buffer.
+ */
+const RELEASE_GRACE_MS = 1500;
 
 export type VideoReadinessSnapshot = {
   ready: boolean;
@@ -18,10 +24,12 @@ type VideoEntry = {
   listeners: Set<(snapshot: VideoReadinessSnapshot) => void>;
   snapshot: VideoReadinessSnapshot;
   gateTimer: ReturnType<typeof setTimeout> | null;
+  releaseTimer: ReturnType<typeof setTimeout> | null;
+  detach: (() => void) | null;
+  linkElement: HTMLLinkElement | null;
 };
 
 const entries = new Map<string, VideoEntry>();
-const preloadedLinks = new Set<string>();
 
 function resolveHref(src: string): string {
   return new URL(src, window.location.href).href;
@@ -91,14 +99,17 @@ function notifyEntry(entry: VideoEntry): void {
   }
 }
 
-function ensureLinkPreload(href: string): void {
-  if (preloadedLinks.has(href)) return;
-  preloadedLinks.add(href);
+function ensureLinkPreload(href: string): HTMLLinkElement {
+  const existing = document.head.querySelector<HTMLLinkElement>(
+    `link[rel="preload"][as="video"][href="${href}"]`,
+  );
+  if (existing) return existing;
   const link = document.createElement("link");
   link.rel = "preload";
   link.as = "video";
   link.href = href;
   document.head.appendChild(link);
+  return link;
 }
 
 function startGateTimer(entry: VideoEntry): void {
@@ -111,6 +122,46 @@ function startGateTimer(entry: VideoEntry): void {
     );
     notifyEntry(entry);
   }, MAX_GATE_WAIT_MS);
+}
+
+/** Free the hidden <video>, remove the <link>, drop the entry. */
+function releaseEntry(entry: VideoEntry): void {
+  if (entry.releaseTimer) {
+    clearTimeout(entry.releaseTimer);
+    entry.releaseTimer = null;
+  }
+  if (entry.gateTimer) {
+    clearTimeout(entry.gateTimer);
+    entry.gateTimer = null;
+  }
+  entry.detach?.();
+  entry.detach = null;
+  try {
+    entry.video.pause();
+    entry.video.removeAttribute("src");
+    entry.video.load();
+  } catch {
+    /* iOS may throw if already torn down */
+  }
+  if (entry.linkElement?.parentNode) {
+    entry.linkElement.parentNode.removeChild(entry.linkElement);
+  }
+  entry.linkElement = null;
+  entries.delete(entry.href);
+}
+
+function scheduleRelease(entry: VideoEntry): void {
+  if (entry.releaseTimer) return;
+  entry.releaseTimer = setTimeout(() => {
+    entry.releaseTimer = null;
+    if (entry.listeners.size === 0) releaseEntry(entry);
+  }, RELEASE_GRACE_MS);
+}
+
+function cancelRelease(entry: VideoEntry): void {
+  if (!entry.releaseTimer) return;
+  clearTimeout(entry.releaseTimer);
+  entry.releaseTimer = null;
 }
 
 /** Shared hidden video + readiness tracking — one entry per src. */
@@ -131,15 +182,19 @@ export function acquireMobileVideoPrepare(src: string): {
     video.setAttribute("webkit-playsinline", "true");
     video.src = href;
 
+    const linkElement = ensureLinkPreload(href);
+
     entry = {
       video,
       href,
       listeners: new Set(),
       snapshot: computeSnapshot(video, false, false),
       gateTimer: null,
+      releaseTimer: null,
+      detach: null,
+      linkElement,
     };
     entries.set(href, entry);
-    ensureLinkPreload(href);
     startGateTimer(entry);
 
     const update = () => {
@@ -151,27 +206,44 @@ export function acquireMobileVideoPrepare(src: string): {
       notifyEntry(entry!);
     };
 
-    video.addEventListener("loadedmetadata", update);
-    video.addEventListener("canplay", update);
-    video.addEventListener("progress", update);
-    video.addEventListener("error", () => {
+    const onError = () => {
       entry!.snapshot = computeSnapshot(
         entry!.video,
         true,
         entry!.snapshot.timedOut,
       );
       notifyEntry(entry!);
-    });
+    };
+
+    video.addEventListener("loadedmetadata", update);
+    video.addEventListener("canplay", update);
+    video.addEventListener("progress", update);
+    video.addEventListener("error", onError);
+
+    entry.detach = () => {
+      video.removeEventListener("loadedmetadata", update);
+      video.removeEventListener("canplay", update);
+      video.removeEventListener("progress", update);
+      video.removeEventListener("error", onError);
+    };
 
     video.load();
   }
+
+  cancelRelease(entry);
 
   return {
     video: entry.video,
     subscribe: (listener) => {
       entry!.listeners.add(listener);
+      cancelRelease(entry!);
       listener(entry!.snapshot);
-      return () => entry!.listeners.delete(listener);
+      return () => {
+        entry!.listeners.delete(listener);
+        if (entry!.listeners.size === 0) {
+          scheduleRelease(entry!);
+        }
+      };
     },
     getSnapshot: () => entry!.snapshot,
   };
