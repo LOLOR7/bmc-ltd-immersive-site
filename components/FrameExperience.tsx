@@ -16,14 +16,19 @@ import { ChevronDown } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const INITIAL_PRELOAD = 5;
+const INITIAL_PRELOAD_MOBILE = 12;
 const NEARBY_RADIUS = 4;
+const NEARBY_RADIUS_MOBILE = 12;
+const MOBILE_SCROLL_AHEAD = 24;
 const IDLE_BATCH_SIZE = 12;
-/** Preload when section is near viewport (mobile only). */
-const MOBILE_PRELOAD_ROOT_MARGIN = "150% 0px";
+/** When to start idle/window preload (mobile). */
+const MOBILE_PRELOAD_ROOT_MARGIN = "200% 0px";
 const MOBILE_PRELOAD_THRESHOLD = 0.01;
-/** Max frames kept decoded per project in RAM on mobile (±radius around scroll position). */
-const MOBILE_CACHE_WINDOW_RADIUS = 32;
-const MOBILE_WARMUP_FRAME_COUNT = 12;
+/** Purge decoded frames only when section is fully off-screen (mobile). */
+const MOBILE_PURGE_ROOT_MARGIN = "0px";
+/** Max frames kept decoded per project in RAM on mobile (±radius around scroll). */
+const MOBILE_CACHE_WINDOW_RADIUS = 56;
+const MOBILE_WARMUP_FRAME_COUNT = 20;
 const MOBILE_WARMUP_CONCURRENCY = 2;
 
 const isDev = process.env.NODE_ENV === "development";
@@ -265,6 +270,7 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
   const firstStrictFrameAppliedRef = useRef(false);
   const nextWarmupTriggeredRef = useRef(false);
   const preloadReleaseRef = useRef<(() => void) | null>(null);
+  const isMobileViewportRef = useRef(false);
 
   const activeFrameConfig = useMemo(
     () => buildActiveFrameConfig(config, useMobileFrames),
@@ -345,7 +351,11 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
           }
         };
 
-        void img.decode?.().then(commitSwap).catch(commitSwap);
+        if (isMobileViewportRef.current) {
+          commitSwap();
+        } else {
+          void img.decode?.().then(commitSwap).catch(commitSwap);
+        }
       };
 
       if (cached?.complete && cached.naturalWidth > 0) {
@@ -387,11 +397,23 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
 
   const preloadNearby = useCallback(
     (index: number) => {
-      for (let i = index - NEARBY_RADIUS; i <= index + NEARBY_RADIUS; i++) {
+      const radius = isMobileViewport ? NEARBY_RADIUS_MOBILE : NEARBY_RADIUS;
+      for (let i = index - radius; i <= index + radius; i++) {
         preloadFrame(i);
       }
     },
-    [preloadFrame],
+    [preloadFrame, isMobileViewport],
+  );
+
+  const preloadScrollAhead = useCallback(
+    (index: number) => {
+      if (!isMobileViewport) return;
+      const end = Math.min(lastFrame, index + MOBILE_SCROLL_AHEAD);
+      for (let i = index; i <= end; i++) {
+        preloadFrame(i);
+      }
+    },
+    [isMobileViewport, lastFrame, preloadFrame],
   );
 
   const applyFrame = useCallback(
@@ -455,7 +477,11 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 768px)");
-    const updateViewport = () => setIsMobileViewport(mq.matches);
+    const updateViewport = () => {
+      const mobile = mq.matches;
+      isMobileViewportRef.current = mobile;
+      setIsMobileViewport(mobile);
+    };
     updateViewport();
     mq.addEventListener("change", updateViewport);
     return () => mq.removeEventListener("change", updateViewport);
@@ -504,17 +530,16 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
     [id, isMobileViewport, triggerNextWarmup],
   );
 
-  const denyFullPreload = useCallback(() => {
+  const pauseIdlePreload = useCallback(() => {
     preloadReleaseRef.current?.();
     preloadReleaseRef.current = null;
     isPreloadAllowedRef.current = false;
     setIsPreloadAllowed(false);
     fullPreloadStartedRef.current = false;
-    purgeActiveFrameCache();
     if (isDev) {
-      console.log(`[FrameExperience] preload paused / cache cleared: ${id}`);
+      console.log(`[FrameExperience] preload paused: ${id}`);
     }
-  }, [id, purgeActiveFrameCache]);
+  }, [id]);
 
   useEffect(() => {
     if (!isMobileViewport) {
@@ -533,13 +558,13 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
       console.log(`[FrameExperience] preload deferred: ${id}`);
     }
 
-    const observer = new IntersectionObserver(
+    const allowObserver = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
             allowFullPreload("io");
           } else {
-            denyFullPreload();
+            pauseIdlePreload();
           }
         }
       },
@@ -550,12 +575,39 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
       },
     );
 
-    observer.observe(section);
+    const purgeObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) {
+            purgeActiveFrameCache();
+            if (isDev) {
+              console.log(`[FrameExperience] cache purged (off-screen): ${id}`);
+            }
+          }
+        }
+      },
+      {
+        root: null,
+        rootMargin: MOBILE_PURGE_ROOT_MARGIN,
+        threshold: 0,
+      },
+    );
+
+    allowObserver.observe(section);
+    purgeObserver.observe(section);
     return () => {
-      observer.disconnect();
-      denyFullPreload();
+      allowObserver.disconnect();
+      purgeObserver.disconnect();
+      pauseIdlePreload();
+      purgeActiveFrameCache();
     };
-  }, [isMobileViewport, id, allowFullPreload, denyFullPreload]);
+  }, [
+    isMobileViewport,
+    id,
+    allowFullPreload,
+    pauseIdlePreload,
+    purgeActiveFrameCache,
+  ]);
 
   useEffect(() => {
     fullPreloadStartedRef.current = false;
@@ -834,17 +886,8 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
 
       if (framesAvailable && nextFrame !== lastTickFrame) {
         lastTickFrame = nextFrame;
-        if (isMobileViewport) {
-          purgeCacheOutsideWindow(
-            getActiveCache(),
-            nextFrame,
-            firstFrame,
-            lastFrame,
-            MOBILE_CACHE_WINDOW_RADIUS,
-            lastGoodFrameRef.current,
-          );
-        }
         preloadNearby(nextFrame);
+        preloadScrollAhead(nextFrame);
         if (nextFrame !== frameRef.current) {
           applyFrame(nextFrame);
         }
@@ -868,9 +911,7 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
     applyFrame,
     isMobileViewport,
     allowFullPreload,
-    getActiveCache,
-    firstFrame,
-    lastFrame,
+    preloadScrollAhead,
   ]);
 
   return (
