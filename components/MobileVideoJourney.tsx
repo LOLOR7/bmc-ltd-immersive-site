@@ -4,7 +4,6 @@ import MobileProjectIntro from "@/components/MobileProjectIntro";
 import MobileProjectProgress from "@/components/MobileProjectProgress";
 import VideoScrollExperience from "@/components/VideoScrollExperience";
 import { MOBILE_VIDEO_PROJECTS } from "@/lib/mobile-video-projects";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useCallback, useEffect, useState } from "react";
 
 export default function MobileVideoJourney() {
@@ -31,7 +30,14 @@ export default function MobileVideoJourney() {
       next.add(projectIndex);
       return next;
     });
-    requestAnimationFrame(() => ScrollTrigger.refresh());
+    // Note: no ScrollTrigger.refresh() here. With the intro `minHeight`
+    // now fixed at 100vh across the unlock transition, no layout shifts,
+    // so the existing triggers' cached start/end positions stay valid.
+    // The next-video's own VideoScrollExperience effect already calls
+    // ScrollTrigger.refresh() inside `bindScroll()` when its trigger is
+    // created. Refreshing here was the secondary cause of the micro
+    // jump because `invalidateOnRefresh: true` on the previous video's
+    // scrub could nudge `video.currentTime` mid-transition.
   }, []);
 
   useEffect(() => {

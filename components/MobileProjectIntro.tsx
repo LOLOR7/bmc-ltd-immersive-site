@@ -215,7 +215,14 @@ export default function MobileProjectIntro({
       <section
         ref={sectionRef}
         className={`mobile-project-intro${hasUnlocked ? " mobile-project-intro--ready" : ""}`}
-        style={{ minHeight: hasUnlocked ? "115vh" : "100vh" }}
+        // Height MUST stay constant across the unlock transition. A previous
+        // `hasUnlocked ? 115vh : 100vh` caused a 7.5vh vertical content drift
+        // (content is centered via `align-items: center`, so the centre moves
+        // when the container resizes) — perceived as a small upward jump
+        // revealing the end of the previous project right when the gate
+        // released. Fixed at 100vh = perfect alignment with the centred
+        // overlay content, zero shift at unlock.
+        style={{ minHeight: "100vh" }}
         data-mobile-project-index={projectIndex}
         data-mobile-journey-section="intro"
         aria-label={`Introduction — ${title}`}
