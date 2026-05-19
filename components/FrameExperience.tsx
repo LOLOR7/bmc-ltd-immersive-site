@@ -3,6 +3,12 @@
 import MetricPill from "@/components/MetricPill";
 import ViewProjectLink from "@/components/ViewProjectLink";
 import type { FrameExperienceConfig } from "@/lib/experiences/types";
+import {
+  boostMobileFullPreloadPriority,
+  getMobilePreloadPriority,
+  idleDelay,
+  requestFullPreload,
+} from "@/lib/frame-preload-scheduler";
 import type { SceneContent } from "@/lib/scenes";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -432,8 +438,15 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
         }
         triggerNextWarmup();
       }
+
+      if (isMobileViewport) {
+        boostMobileFullPreloadPriority(
+          id,
+          getMobilePreloadPriority(id, progressRef.current),
+        );
+      }
     },
-    [id, triggerNextWarmup],
+    [id, isMobileViewport, triggerNextWarmup],
   );
 
   useEffect(() => {
@@ -592,6 +605,24 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
     for (let i = firstFrame; i <= preloadEnd; i++) preloadFrame(i);
   }, [framesAvailable, preloadFrame, firstFrame, lastFrame]);
 
+  const runFullIdlePreload = useCallback(
+    async (signal: AbortSignal) => {
+      const preloadEnd = Math.min(firstFrame + INITIAL_PRELOAD - 1, lastFrame);
+      let i = preloadEnd + 1;
+
+      while (i <= lastFrame && !signal.aborted) {
+        const end = Math.min(i + IDLE_BATCH_SIZE, lastFrame);
+        for (; i <= end && !signal.aborted; i++) {
+          preloadFrame(i);
+        }
+        if (i <= lastFrame) {
+          await idleDelay(signal);
+        }
+      }
+    },
+    [preloadFrame, firstFrame, lastFrame],
+  );
+
   useEffect(() => {
     if (!framesAvailable) return;
     if (isMobileViewport && !isPreloadAllowed) return;
@@ -600,29 +631,25 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
     fullPreloadStartedRef.current = true;
     idlePreloadCancelledRef.current = false;
 
-    const preloadEnd = Math.min(firstFrame + INITIAL_PRELOAD - 1, lastFrame);
-    let i = preloadEnd + 1;
-
-    const batch = () => {
-      if (idlePreloadCancelledRef.current) return;
-      const end = Math.min(i + IDLE_BATCH_SIZE, lastFrame);
-      for (; i <= end; i++) preloadFrame(i);
-      if (i <= lastFrame) {
-        window.requestIdleCallback?.(batch) ?? window.setTimeout(batch, 40);
-      }
-    };
-    batch();
+    const priority = getMobilePreloadPriority(id, progressRef.current);
+    const release = requestFullPreload(
+      isMobileViewport,
+      id,
+      priority,
+      runFullIdlePreload,
+    );
 
     return () => {
       idlePreloadCancelledRef.current = true;
+      release();
     };
   }, [
     framesAvailable,
     isPreloadAllowed,
     isMobileViewport,
-    preloadFrame,
-    firstFrame,
-    lastFrame,
+    id,
+    activeFramePath,
+    runFullIdlePreload,
   ]);
 
   useEffect(() => {

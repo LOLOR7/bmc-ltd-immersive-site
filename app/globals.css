@@ -620,6 +620,22 @@ body.boot-loading {
     margin-top: 0.5rem;
   }
 
+  .boot-loader__status-label {
+    font-size: 0.62rem;
+    color: rgba(244, 240, 232, 0.55);
+  }
+
+  .boot-loader__hint {
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    color: rgba(244, 240, 232, 0.78);
+  }
+
+  .boot-loader__sub {
+    font-size: 0.6rem;
+    color: rgba(244, 240, 232, 0.48);
+  }
+
   .boot-loader__carousel-card {
     width: clamp(210px, 60vw, 260px);
     height: clamp(130px, 18vh, 170px);

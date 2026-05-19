@@ -477,7 +477,9 @@ export default function BootLoader() {
 
         <div className="boot-loader__progress">
           <div className="boot-loader__status">
-            <p className="boot-loader__status-label">Loading first sequence</p>
+            <p className="boot-loader__status-label">
+              Preparing immersive experience
+            </p>
             <div className="boot-loader__track" aria-hidden="true">
               <span
                 className="boot-loader__bar"
@@ -487,10 +489,10 @@ export default function BootLoader() {
           </div>
 
           <p className="boot-loader__hint">
-            This first load may take up to one minute.
+            First load takes about 30 seconds
           </p>
           <p className="boot-loader__sub">
-            Please keep this page open while the visuals are being prepared.
+            Please keep this page open while visuals are prepared.
           </p>
         </div>
       </div>
