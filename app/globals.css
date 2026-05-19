@@ -276,6 +276,149 @@ body {
   color: rgba(245, 200, 180, 0.65);
 }
 
+/* Mobile project intro — pre-video transition (≤768px journey only) */
+.mobile-project-intro {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(2rem, 8vw, 4rem) clamp(1.25rem, 5vw, 2rem)
+    calc(clamp(3rem, 10vw, 5rem) + env(safe-area-inset-bottom, 0px));
+  background: #050505;
+  border-bottom: 1px solid rgba(245, 240, 230, 0.08);
+}
+
+.mobile-project-intro__inner {
+  width: 100%;
+  max-width: 28rem;
+  animation: mobile-intro-enter 0.9s ease-out both;
+}
+
+@keyframes mobile-intro-enter {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mobile-project-intro__eyebrow {
+  margin: 0 0 1rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.38em;
+  text-transform: uppercase;
+  color: rgba(245, 240, 230, 0.38);
+}
+
+.mobile-project-intro__title {
+  margin: 0;
+  font-size: clamp(1.65rem, 6vw, 2.25rem);
+  font-weight: 300;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: rgba(245, 240, 230, 0.95);
+}
+
+.mobile-project-intro__description {
+  margin: 1.25rem 0 0;
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: rgba(245, 240, 230, 0.52);
+}
+
+.mobile-project-intro__preparing {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 2rem 0 0;
+  font-size: 0.58rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(245, 240, 230, 0.32);
+}
+
+.mobile-project-intro__preparing-line {
+  display: block;
+  width: 2rem;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(245, 240, 230, 0.45),
+    rgba(245, 240, 230, 0.08)
+  );
+  animation: mobile-intro-line 1.8s ease-in-out infinite;
+}
+
+@keyframes mobile-intro-line {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scaleX(0.65);
+    transform-origin: left;
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
+
+/* Mobile journey — 5-step progress (fixed bottom) */
+.mobile-project-progress {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  pointer-events: none;
+  padding: 0 clamp(1rem, 4vw, 1.5rem)
+    max(0.65rem, env(safe-area-inset-bottom, 0px));
+}
+
+.mobile-project-progress__track {
+  display: flex;
+  gap: 0.35rem;
+  width: 100%;
+  max-width: 22rem;
+  margin: 0 auto;
+}
+
+.mobile-project-progress__segment {
+  flex: 1;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(245, 240, 230, 0.12);
+  transition: background 0.45s ease, opacity 0.45s ease;
+}
+
+.mobile-project-progress__segment--past {
+  background: rgba(245, 240, 230, 0.38);
+}
+
+.mobile-project-progress__segment--active {
+  background: rgba(245, 240, 230, 0.72);
+}
+
+@media (min-width: 769px) {
+  .mobile-project-intro,
+  .mobile-project-progress {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .video-scroll-experience .frame-text-layer {
+    padding-bottom: max(
+      clamp(3.5rem, 12vw, 5rem),
+      calc(env(safe-area-inset-bottom, 0px) + 2.25rem)
+    );
+  }
+}
+
 .frame-overlay {
   position: absolute;
   inset: 0;
