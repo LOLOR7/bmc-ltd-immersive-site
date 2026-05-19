@@ -1,7 +1,6 @@
 import FinalSection from "@/components/FinalSection";
-import FrameExperience from "@/components/FrameExperience";
 import Header from "@/components/Header";
-import VideoScrollExperience from "@/components/VideoScrollExperience";
+import HomeProjectExperience from "@/components/HomeProjectExperience";
 import IntroBrandHero from "@/components/IntroBrandHero";
 import TransitionSection from "@/components/TransitionSection";
 import { ADMA_EXPERIENCE } from "@/lib/experiences/adma";
@@ -9,15 +8,22 @@ import { ADMA514_EXPERIENCE } from "@/lib/experiences/adma514";
 import { ADMA527_EXPERIENCE } from "@/lib/experiences/adma527";
 import { BEKISH_EXPERIENCE } from "@/lib/experiences/bekish";
 import { DUSK_EXPERIENCE } from "@/lib/experiences/dusk";
+import { HOME_VIDEO_SCROLL } from "@/lib/home-video-scroll";
 
 export default function Home() {
   return (
     <main id="architecture" className="relative bg-[#050505]">
       <Header />
       <IntroBrandHero />
-      <FrameExperience config={ADMA_EXPERIENCE} />
+      <HomeProjectExperience
+        config={ADMA_EXPERIENCE}
+        videoSrc={HOME_VIDEO_SCROLL.admaCliff}
+      />
       <TransitionSection />
-      <FrameExperience config={BEKISH_EXPERIENCE} />
+      <HomeProjectExperience
+        config={BEKISH_EXPERIENCE}
+        videoSrc={HOME_VIDEO_SCROLL.bekish}
+      />
       <TransitionSection
         eyebrow="Next residence"
         title="Adma 527"
@@ -29,7 +35,10 @@ export default function Home() {
         ]}
         ariaLabel="Before Adma 527"
       />
-      <FrameExperience config={ADMA527_EXPERIENCE} />
+      <HomeProjectExperience
+        config={ADMA527_EXPERIENCE}
+        videoSrc={HOME_VIDEO_SCROLL.adma527}
+      />
       <TransitionSection
         eyebrow="Next residence"
         title="Adma 514"
@@ -41,7 +50,10 @@ export default function Home() {
         ]}
         ariaLabel="Before Adma 514"
       />
-      <FrameExperience config={ADMA514_EXPERIENCE} />
+      <HomeProjectExperience
+        config={ADMA514_EXPERIENCE}
+        videoSrc={HOME_VIDEO_SCROLL.adma514}
+      />
       <TransitionSection
         eyebrow="Next residence"
         title="Dusk"
@@ -53,8 +65,10 @@ export default function Home() {
         ]}
         ariaLabel="Before Dusk"
       />
-      <FrameExperience config={DUSK_EXPERIENCE} />
-      <VideoScrollExperience />
+      <HomeProjectExperience
+        config={DUSK_EXPERIENCE}
+        videoSrc={HOME_VIDEO_SCROLL.dusk}
+      />
       <FinalSection />
     </main>
   );

@@ -250,12 +250,12 @@ body {
   background: rgba(0, 0, 0, 0.2);
 }
 
-/* Video scroll POC (Adma 527) — experimental 6th section */
-.video-scroll-poc__video {
+/* Home mobile video scroll test */
+.video-scroll-experience__video {
   pointer-events: none;
 }
 
-.video-scroll-poc__status {
+.video-scroll-experience__status {
   position: absolute;
   inset: 0;
   z-index: 2;
@@ -272,24 +272,8 @@ body {
   pointer-events: none;
 }
 
-.video-scroll-poc__status--error {
+.video-scroll-experience__status--error {
   color: rgba(245, 200, 180, 0.65);
-}
-
-.video-scroll-poc__label {
-  position: absolute;
-  left: 1rem;
-  bottom: 1rem;
-  z-index: 3;
-  margin: 0;
-  padding: 0.35rem 0.65rem;
-  font-size: 0.65rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(245, 240, 230, 0.55);
-  background: rgba(5, 5, 5, 0.45);
-  border: 1px solid rgba(245, 240, 230, 0.12);
-  pointer-events: none;
 }
 
 .frame-overlay {

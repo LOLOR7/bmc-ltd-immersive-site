@@ -1,21 +1,31 @@
 "use client";
 
+import MetricPill from "@/components/MetricPill";
+import ViewProjectLink from "@/components/ViewProjectLink";
+import {
+  resolvePanel,
+  type PanelState,
+} from "@/lib/experience-panel";
+import type { FrameExperienceConfig } from "@/lib/experiences/types";
+import type { SceneContent } from "@/lib/scenes";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-const VIDEO_PATH = "/videos/adma-527-mobile-scroll-poc.mp4";
-const SCROLL_HEIGHT_VH = 400;
-/** Min delta (s) before seeking — reduces iOS scrub jank. */
 const SEEK_THRESHOLD_S = 0.04;
-
 const isDev = process.env.NODE_ENV === "development";
 
 type VideoStatus = "loading" | "ready" | "error";
 
-function logDev(label: string, video: HTMLVideoElement) {
+type VideoScrollExperienceProps = {
+  config: FrameExperienceConfig;
+  videoSrc: string;
+};
+
+function logDev(label: string, video: HTMLVideoElement, experienceId: string) {
   if (!isDev) return;
-  console.log(`[VideoScrollPOC] ${label}`, {
+  console.log(`[VideoScroll:${experienceId}] ${label}`, {
     currentSrc: video.currentSrc,
     readyState: video.readyState,
     networkState: video.networkState,
@@ -34,19 +44,74 @@ function primeIosFirstFrame(video: HTMLVideoElement) {
   }
 }
 
-export default function VideoScrollExperience() {
+function SceneBlock({
+  scene,
+  experienceId,
+}: {
+  scene: SceneContent;
+  experienceId: string;
+}) {
+  return (
+    <div className="scene-block max-w-3xl">
+      {scene.index && (
+        <p className="mb-3 text-[0.65rem] tracking-[0.35em] text-cream/45 uppercase md:text-xs">
+          {scene.index}
+        </p>
+      )}
+      <h2 className="text-2xl leading-[1.05] font-light tracking-[-0.02em] text-cream sm:text-4xl md:text-5xl lg:text-6xl">
+        {scene.title}
+      </h2>
+      <p className="mt-3 max-w-xl text-sm leading-relaxed text-cream/60 md:mt-4 md:text-base">
+        {scene.description}
+      </p>
+      {scene.metrics && scene.metrics.length > 0 && (
+        <ul className="mt-6 flex flex-col gap-2 sm:mt-8 sm:flex-row sm:flex-wrap sm:gap-3">
+          {scene.metrics.map((metric) => (
+            <li key={metric.label}>
+              <MetricPill label={metric.label} />
+            </li>
+          ))}
+        </ul>
+      )}
+      <ViewProjectLink experienceId={experienceId} />
+    </div>
+  );
+}
+
+export default function VideoScrollExperience({
+  config,
+  videoSrc: videoPath,
+}: VideoScrollExperienceProps) {
+  const {
+    id,
+    ariaLabel,
+    projectName,
+    subtitle,
+    hint = "Scroll to explore",
+    heroStats,
+    brandLabel,
+    projectType,
+    featureLine,
+    surfaceLine,
+    location,
+    scenes,
+    scrollHeightVh,
+  } = config;
+
   const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [videoSrc, setVideoSrc] = useState(VIDEO_PATH);
+  const progressRef = useRef(0);
+  const [resolvedSrc, setResolvedSrc] = useState(videoPath);
   const [status, setStatus] = useState<VideoStatus>("loading");
+  const [activePanel, setActivePanel] = useState<PanelState>("hero");
 
   useEffect(() => {
-    setVideoSrc(
+    setResolvedSrc(
       typeof window !== "undefined"
-        ? new URL(VIDEO_PATH, window.location.href).href
-        : VIDEO_PATH,
+        ? new URL(videoPath, window.location.href).href
+        : videoPath,
     );
-  }, []);
+  }, [videoPath]);
 
   useEffect(() => {
     gsap.registerPlugin(ScrollTrigger);
@@ -57,6 +122,7 @@ export default function VideoScrollExperience() {
 
     let ctx: gsap.Context | undefined;
     let scrollBound = false;
+    let rafId = 0;
 
     video.muted = true;
     video.defaultMuted = true;
@@ -72,17 +138,22 @@ export default function VideoScrollExperience() {
       if (!Number.isFinite(duration) || duration <= 0) return;
 
       scrollBound = true;
+      const reducedMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+
       ctx = gsap.context(() => {
         ScrollTrigger.create({
           trigger: section,
           start: "top top",
           end: "bottom bottom",
-          scrub: true,
+          scrub: reducedMotion ? 0.4 : true,
           invalidateOnRefresh: true,
           onEnter: () => {
             primeIosFirstFrame(video);
           },
           onUpdate: (self) => {
+            progressRef.current = self.progress;
             const target = self.progress * duration;
             if (!Number.isFinite(target)) return;
             if (Math.abs(video.currentTime - target) < SEEK_THRESHOLD_S) return;
@@ -109,23 +180,23 @@ export default function VideoScrollExperience() {
           primeIosFirstFrame(video);
         })
         .catch(() => {
-          /* autoplay blocked until scroll — first frame may still paint */
+          /* autoplay blocked until scroll */
         });
     };
 
     const onLoadedMetadata = () => {
-      logDev("loadedmetadata", video);
+      logDev("loadedmetadata", video, id);
       primeIosFirstFrame(video);
       bindScroll();
     };
 
     const onCanPlay = () => {
-      logDev("canplay", video);
+      logDev("canplay", video, id);
       markReady();
     };
 
     const onError = () => {
-      logDev("error", video);
+      logDev("error", video, id);
       setStatus("error");
     };
 
@@ -140,11 +211,19 @@ export default function VideoScrollExperience() {
       onCanPlay();
     }
 
+    const tick = () => {
+      const nextPanel = resolvePanel(progressRef.current, config);
+      setActivePanel((prev) => (prev === nextPanel ? prev : nextPanel));
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+
     const onResize = () => ScrollTrigger.refresh();
     window.addEventListener("resize", onResize);
     window.addEventListener("orientationchange", onResize);
 
     return () => {
+      cancelAnimationFrame(rafId);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("orientationchange", onResize);
       video.removeEventListener("loadedmetadata", onLoadedMetadata);
@@ -152,21 +231,21 @@ export default function VideoScrollExperience() {
       video.removeEventListener("error", onError);
       ctx?.revert();
     };
-  }, [videoSrc]);
+  }, [resolvedSrc, config, id]);
 
   return (
     <section
       ref={sectionRef}
-      id="adma527-video-scroll-poc"
-      className="frame-section video-scroll-poc"
-      style={{ height: `${SCROLL_HEIGHT_VH}vh` }}
-      aria-label="Video scroll proof of concept — Adma 527"
+      id={id}
+      className="frame-section video-scroll-experience"
+      style={{ height: `${scrollHeightVh}vh` }}
+      aria-label={ariaLabel}
     >
       <div className="frame-sticky">
         <video
           ref={videoRef}
-          className="frame-image video-scroll-poc__video"
-          src={videoSrc}
+          className="frame-image video-scroll-experience__video"
+          src={resolvedSrc}
           muted
           playsInline
           preload="auto"
@@ -175,17 +254,78 @@ export default function VideoScrollExperience() {
           aria-hidden
         />
         <div className="frame-exposure" aria-hidden="true" />
+        <div className="frame-overlay" aria-hidden="true" />
+
+        <div className="frame-text-layer">
+          {activePanel === "hero" && (
+            <div className="scene-block max-w-4xl">
+              {(brandLabel || location) && (
+                <p className="mb-3 text-[0.65rem] tracking-[0.35em] text-cream/45 uppercase">
+                  {brandLabel ?? location}
+                </p>
+              )}
+              <h1 className="text-[clamp(1.75rem,6.5vw,4.75rem)] leading-[1.02] font-light tracking-[-0.03em] text-cream">
+                {projectName}
+              </h1>
+              <p className="mt-4 max-w-lg text-sm leading-relaxed text-cream/60 md:mt-5 md:text-base">
+                {subtitle}
+              </p>
+              {(projectType || featureLine || surfaceLine) && (
+                <div className="hero-meta mt-6 space-y-2 border-l border-cream/15 pl-4 md:mt-8">
+                  {projectType && (
+                    <p className="text-[0.65rem] tracking-[0.22em] text-cream/50 uppercase">
+                      {projectType}
+                    </p>
+                  )}
+                  {featureLine && (
+                    <p className="text-sm font-light tracking-[0.06em] text-cream/55">
+                      {featureLine}
+                    </p>
+                  )}
+                  {surfaceLine && (
+                    <p className="text-[0.7rem] tracking-[0.12em] text-cream/40">
+                      {surfaceLine}
+                    </p>
+                  )}
+                </div>
+              )}
+              {heroStats && heroStats.length > 0 && (
+                <ul className="mt-6 flex flex-col gap-2 sm:mt-8 sm:flex-row sm:flex-wrap sm:gap-3">
+                  {heroStats.map((stat) => (
+                    <li key={stat.label}>
+                      <MetricPill label={stat.label} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <ViewProjectLink experienceId={id} />
+              <p className="mt-8 flex items-center gap-2 text-[0.6rem] tracking-[0.28em] text-cream/40 uppercase md:mt-10">
+                <ChevronDown
+                  className="h-3.5 w-3.5 animate-pulse"
+                  strokeWidth={1.25}
+                />
+                {hint}
+              </p>
+            </div>
+          )}
+          {typeof activePanel === "number" && (
+            <SceneBlock scene={scenes[activePanel]} experienceId={id} />
+          )}
+        </div>
+
         {status === "loading" && (
-          <p className="video-scroll-poc__status" role="status">
+          <p className="video-scroll-experience__status" role="status">
             Video loading…
           </p>
         )}
         {status === "error" && (
-          <p className="video-scroll-poc__status video-scroll-poc__status--error" role="alert">
+          <p
+            className="video-scroll-experience__status video-scroll-experience__status--error"
+            role="alert"
+          >
             Video unavailable — check connection or use www.bmcdevelopmentlb.com
           </p>
         )}
-        <p className="video-scroll-poc__label">Video Scroll POC — Adma 527</p>
       </div>
     </section>
   );
