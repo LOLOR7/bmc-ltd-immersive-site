@@ -11,6 +11,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const INITIAL_PRELOAD = 5;
 const NEARBY_RADIUS = 4;
+const IDLE_BATCH_SIZE = 12;
+/** Preload full sequence when section is within ~1.5 viewports (mobile only). */
+const MOBILE_PRELOAD_ROOT_MARGIN = "150% 0px";
+const MOBILE_PRELOAD_THRESHOLD = 0.01;
+
+const isDev = process.env.NODE_ENV === "development";
 
 type PanelState = "hero" | number;
 
@@ -143,6 +149,10 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
   const [activePanel, setActivePanel] = useState<PanelState>("hero");
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [useMobileFrames, setUseMobileFrames] = useState(false);
+  const [isPreloadAllowed, setIsPreloadAllowed] = useState(false);
+  const fullPreloadStartedRef = useRef(false);
+  const idlePreloadCancelledRef = useRef(false);
+  const mobileHintsPreloadedRef = useRef(false);
 
   const activeFrameConfig = useMemo(
     () => buildActiveFrameConfig(config, useMobileFrames),
@@ -316,6 +326,48 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
   }, []);
 
   useEffect(() => {
+    if (!isMobileViewport) {
+      setIsPreloadAllowed(true);
+      return;
+    }
+
+    const section = sectionRef.current;
+    if (!section) return;
+
+    setIsPreloadAllowed(false);
+    if (isDev) {
+      console.log(`[FrameExperience] preload deferred: ${id}`);
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setIsPreloadAllowed((prev) => {
+          if (prev) return prev;
+          if (isDev) {
+            console.log(`[FrameExperience] preload allowed: ${id}`);
+          }
+          return true;
+        });
+      },
+      {
+        root: null,
+        rootMargin: MOBILE_PRELOAD_ROOT_MARGIN,
+        threshold: MOBILE_PRELOAD_THRESHOLD,
+      },
+    );
+
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, [isMobileViewport, id]);
+
+  useEffect(() => {
+    fullPreloadStartedRef.current = false;
+    mobileHintsPreloadedRef.current = false;
+    idlePreloadCancelledRef.current = true;
+  }, [activeFramePath]);
+
+  useEffect(() => {
     if (!isMobileViewport || !mobileFramePath) {
       setUseMobileFrames(false);
       return;
@@ -400,24 +452,59 @@ export default function FrameExperience({ config }: FrameExperienceProps) {
 
     const preloadEnd = Math.min(firstFrame + INITIAL_PRELOAD - 1, lastFrame);
     for (let i = firstFrame; i <= preloadEnd; i++) preloadFrame(i);
+  }, [framesAvailable, preloadFrame, firstFrame, lastFrame]);
 
+  useEffect(() => {
+    if (!framesAvailable) return;
+    if (isMobileViewport && !isPreloadAllowed) return;
+    if (fullPreloadStartedRef.current) return;
+
+    fullPreloadStartedRef.current = true;
+    idlePreloadCancelledRef.current = false;
+
+    const preloadEnd = Math.min(firstFrame + INITIAL_PRELOAD - 1, lastFrame);
     let i = preloadEnd + 1;
+
     const batch = () => {
-      const end = Math.min(i + 12, lastFrame);
+      if (idlePreloadCancelledRef.current) return;
+      const end = Math.min(i + IDLE_BATCH_SIZE, lastFrame);
       for (; i <= end; i++) preloadFrame(i);
       if (i <= lastFrame) {
         window.requestIdleCallback?.(batch) ?? window.setTimeout(batch, 40);
       }
     };
     batch();
-  }, [framesAvailable, preloadFrame, firstFrame, lastFrame]);
+
+    return () => {
+      idlePreloadCancelledRef.current = true;
+    };
+  }, [
+    framesAvailable,
+    isPreloadAllowed,
+    isMobileViewport,
+    preloadFrame,
+    firstFrame,
+    lastFrame,
+  ]);
 
   useEffect(() => {
     if (!framesAvailable || !useMobileFrames) return;
+    if (isMobileViewport && !isPreloadAllowed) return;
+    if (mobileHintsPreloadedRef.current) return;
+
     const hints = config.mobilePreloadHints;
     if (!hints?.length) return;
+
+    mobileHintsPreloadedRef.current = true;
     for (const idx of hints) preloadFrame(idx);
-  }, [framesAvailable, useMobileFrames, config, preloadFrame]);
+  }, [
+    framesAvailable,
+    useMobileFrames,
+    isPreloadAllowed,
+    isMobileViewport,
+    config,
+    preloadFrame,
+  ]);
 
   useEffect(() => {
     gsap.registerPlugin(ScrollTrigger);
