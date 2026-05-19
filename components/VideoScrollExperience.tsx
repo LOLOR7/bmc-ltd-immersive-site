@@ -13,8 +13,54 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-const SEEK_THRESHOLD_S = 0.04;
+/** Stay below reported duration — iOS Safari stalls when seeking to the exact end. */
+const END_CLAMP_S = 0.1;
+const START_CLAMP_S = 0.001;
+/** Min delta before issuing a new seek (reduces scrub jank). */
+const MIN_SEEK_DELTA_S = 0.035;
 const isDev = process.env.NODE_ENV === "development";
+
+function getSafeScrollDuration(duration: number): number {
+  if (!Number.isFinite(duration) || duration <= END_CLAMP_S + START_CLAMP_S) {
+    return 0;
+  }
+  return duration - END_CLAMP_S;
+}
+
+function scrollTimeFromProgress(progress: number, safeDuration: number): number {
+  const p = Math.min(1, Math.max(0, progress));
+  if (safeDuration <= 0) return START_CLAMP_S;
+  return Math.min(
+    safeDuration,
+    Math.max(START_CLAMP_S, p * safeDuration),
+  );
+}
+
+function shouldSeek(
+  video: HTMLVideoElement,
+  target: number,
+  lastSeekTarget: number,
+): boolean {
+  if (!Number.isFinite(target)) return false;
+  if (Math.abs(video.currentTime - target) < MIN_SEEK_DELTA_S) return false;
+  if (Math.abs(lastSeekTarget - target) < MIN_SEEK_DELTA_S) return false;
+  return true;
+}
+
+function applyScrollSeek(
+  video: HTMLVideoElement,
+  target: number,
+  lastSeekTargetRef: { current: number },
+): boolean {
+  if (!shouldSeek(video, target, lastSeekTargetRef.current)) return false;
+  try {
+    video.currentTime = target;
+    lastSeekTargetRef.current = target;
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 type VideoStatus = "loading" | "ready" | "error";
 
@@ -33,12 +79,15 @@ function logDev(label: string, video: HTMLVideoElement, experienceId: string) {
   });
 }
 
-function primeIosFirstFrame(video: HTMLVideoElement) {
-  const duration = video.duration;
-  if (!Number.isFinite(duration) || duration <= 0) return;
-  const t = Math.min(0.001, duration);
+function primeIosFirstFrame(
+  video: HTMLVideoElement,
+  lastSeekTargetRef?: { current: number },
+) {
+  const safeDuration = getSafeScrollDuration(video.duration);
+  const t = scrollTimeFromProgress(0, safeDuration);
   try {
     video.currentTime = t;
+    if (lastSeekTargetRef) lastSeekTargetRef.current = t;
   } catch {
     /* iOS may reject seek before buffer */
   }
@@ -123,6 +172,8 @@ export default function VideoScrollExperience({
     let ctx: gsap.Context | undefined;
     let scrollBound = false;
     let rafId = 0;
+    const lastSeekTargetRef = { current: START_CLAMP_S };
+    let safeDuration = 0;
 
     video.muted = true;
     video.defaultMuted = true;
@@ -135,7 +186,8 @@ export default function VideoScrollExperience({
     const bindScroll = () => {
       if (scrollBound) return;
       const duration = video.duration;
-      if (!Number.isFinite(duration) || duration <= 0) return;
+      safeDuration = getSafeScrollDuration(duration);
+      if (safeDuration <= 0) return;
 
       scrollBound = true;
       const reducedMotion = window.matchMedia(
@@ -149,19 +201,10 @@ export default function VideoScrollExperience({
           end: "bottom bottom",
           scrub: reducedMotion ? 0.4 : true,
           invalidateOnRefresh: true,
-          onEnter: () => {
-            primeIosFirstFrame(video);
-          },
           onUpdate: (self) => {
             progressRef.current = self.progress;
-            const target = self.progress * duration;
-            if (!Number.isFinite(target)) return;
-            if (Math.abs(video.currentTime - target) < SEEK_THRESHOLD_S) return;
-            try {
-              video.currentTime = target;
-            } catch {
-              /* iOS may reject seek while not ready */
-            }
+            const target = scrollTimeFromProgress(self.progress, safeDuration);
+            applyScrollSeek(video, target, lastSeekTargetRef);
           },
         });
       }, section);
@@ -171,13 +214,13 @@ export default function VideoScrollExperience({
 
     const markReady = () => {
       setStatus("ready");
-      primeIosFirstFrame(video);
+      primeIosFirstFrame(video, lastSeekTargetRef);
       bindScroll();
       void video
         .play()
         .then(() => {
           video.pause();
-          primeIosFirstFrame(video);
+          primeIosFirstFrame(video, lastSeekTargetRef);
         })
         .catch(() => {
           /* autoplay blocked until scroll */
@@ -186,7 +229,7 @@ export default function VideoScrollExperience({
 
     const onLoadedMetadata = () => {
       logDev("loadedmetadata", video, id);
-      primeIosFirstFrame(video);
+      primeIosFirstFrame(video, lastSeekTargetRef);
       bindScroll();
     };
 
