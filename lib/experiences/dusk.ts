@@ -84,4 +84,6 @@ export const DUSK_EXPERIENCE: FrameExperienceConfig = {
     { start: 0.75, end: 1 },
   ],
   strictAntiFlicker: true,
+  /** Stop scrub before the final zoom-out reveals distorted left building. */
+  endTrimSeconds: 1,
 };
