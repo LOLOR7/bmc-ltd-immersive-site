@@ -42,11 +42,4 @@ export type FrameExperienceConfig = {
   strictAntiFlicker?: boolean;
   /** Mobile-only eager preload hints (specific frame indices to warm up before scroll) */
   mobilePreloadHints?: number[];
-  /**
-   * Video-only: seconds trimmed from the end of the scrub range (mobile
-   * `VideoScrollExperience`). Scroll progress 0→1 still maps the full section
-   * height; only the seek target is clamped so the last N seconds of the file
-   * are never reached. Overlays keep using raw scroll progress. Default 0.
-   */
-  endTrimSeconds?: number;
 };

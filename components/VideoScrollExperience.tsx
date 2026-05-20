@@ -20,18 +20,11 @@ const START_CLAMP_S = 0.001;
 const MIN_SEEK_DELTA_S = 0.035;
 const isDev = process.env.NODE_ENV === "development";
 
-function getSafeScrollDuration(
-  duration: number,
-  endTrimSeconds = 0,
-): number {
-  const trim = Math.max(0, endTrimSeconds);
-  if (
-    !Number.isFinite(duration) ||
-    duration <= END_CLAMP_S + START_CLAMP_S + trim
-  ) {
+function getSafeScrollDuration(duration: number): number {
+  if (!Number.isFinite(duration) || duration <= END_CLAMP_S + START_CLAMP_S) {
     return 0;
   }
-  return duration - END_CLAMP_S - trim;
+  return duration - END_CLAMP_S;
 }
 
 function scrollTimeFromProgress(progress: number, safeDuration: number): number {
@@ -95,9 +88,8 @@ function logDev(label: string, video: HTMLVideoElement, experienceId: string) {
 function primeIosFirstFrame(
   video: HTMLVideoElement,
   lastSeekTargetRef?: { current: number },
-  endTrimSeconds = 0,
 ) {
-  const safeDuration = getSafeScrollDuration(video.duration, endTrimSeconds);
+  const safeDuration = getSafeScrollDuration(video.duration);
   const t = scrollTimeFromProgress(0, safeDuration);
   try {
     video.currentTime = t;
@@ -160,7 +152,6 @@ export default function VideoScrollExperience({
     location,
     scenes,
     scrollHeightVh,
-    endTrimSeconds = 0,
   } = config;
 
   const sectionRef = useRef<HTMLElement>(null);
@@ -228,7 +219,7 @@ export default function VideoScrollExperience({
     const bindScroll = () => {
       if (scrollBound) return;
       const duration = video.duration;
-      safeDuration = getSafeScrollDuration(duration, endTrimSeconds);
+      safeDuration = getSafeScrollDuration(duration);
       if (safeDuration <= 0) return;
 
       scrollBound = true;
@@ -256,13 +247,13 @@ export default function VideoScrollExperience({
 
     const markReady = () => {
       setStatus("ready");
-      primeIosFirstFrame(video, lastSeekTargetRef, endTrimSeconds);
+      primeIosFirstFrame(video, lastSeekTargetRef);
       bindScroll();
       void video
         .play()
         .then(() => {
           video.pause();
-          primeIosFirstFrame(video, lastSeekTargetRef, endTrimSeconds);
+          primeIosFirstFrame(video, lastSeekTargetRef);
         })
         .catch(() => {
           /* autoplay blocked until scroll */
@@ -271,7 +262,7 @@ export default function VideoScrollExperience({
 
     const onLoadedMetadata = () => {
       logDev("loadedmetadata", video, id);
-      primeIosFirstFrame(video, lastSeekTargetRef, endTrimSeconds);
+      primeIosFirstFrame(video, lastSeekTargetRef);
       bindScroll();
     };
 
