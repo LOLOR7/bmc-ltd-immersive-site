@@ -138,7 +138,8 @@ export default function MobileVideoJourney() {
   }, [visibleCount]);
 
   /**
-   * Anticipatory prepare of the FIRST project of the next batch.
+   * Anticipatory prepare of the FIRST project of the next batch —
+   * geometric variant.
    *
    * Why this exists: progressive disclosure intentionally leaves later
    * projects unmounted until the user clicks "Explore more residences",
@@ -149,41 +150,80 @@ export default function MobileVideoJourney() {
    * the gate engages while the first range request is still in flight,
    * which the user reads as a micro freeze / mini chargement.
    *
-   * Compensation: as soon as the user reaches the LAST visible project
-   * (activeIndex >= visibleCount - 1), we open a hidden prepare entry
-   * for project[visibleCount] (the next batch's first slot) — same
-   * lightweight mechanism that `MobileProjectIntro` uses through its
-   * `useVideoReadyGate` hook. When the new intro later mounts on Load
-   * more click, its own subscription joins the already-warmed entry
-   * instead of cold-starting a range request.
+   * Previous iteration used `activeIndex >= visibleCount - 1` as the
+   * trigger (i.e. fire prep once Bekish becomes the IO-highest-ratio
+   * section, around scrollY ≈ 500vh). That removed the cold-mount stall
+   * but Adma 527 still showed a ~0.5s residual delay on weak networks
+   * because the head start was capped at ~500vh of scrolling before the
+   * Load More click — only a few seconds on fast finger flicks.
    *
-   * Bounded: exactly one anticipatory <video hidden> + <link rel="preload">
-   * at peak, only the very next slot in sequence. This mirrors the
-   * adjacency window we already maintain for in-batch transitions
-   * (Bekish pre-prepped while Adma Cliff is active, Adma 514 pre-prepped
-   * while Adma 527 is active, etc.) and preserves the disclosure benefit
-   * (later projects still don't mount their DOM / ScrollTrigger / gate).
+   * This version listens for the LAST visible project wrapper entering
+   * an EXPANDED root (viewport + 100% bottom rootMargin) via a dedicated
+   * IntersectionObserver. With each project section being ~500vh tall,
+   * the Bekish wrapper (body 500–1000vh for batch 1) crosses the
+   * expanded root at scrollY ≈ 300vh — i.e. 60% through the Adma Cliff
+   * scrub, 200vh earlier than the previous trigger. Head start grows
+   * from ~500vh to ~700vh of scrolling, ~+2-3s on typical mobile scroll
+   * speed, enough to absorb the residual stall.
+   *
+   * Why observe the project wrapper rather than the Load More button:
+   * with ~500vh per project, observing the button (at body ~1000vh for
+   * batch 1) would require rootMargin ≥ 400% to fire earlier than the
+   * activeIndex signal — geometrically equivalent to observing the last
+   * project wrapper with rootMargin 100% but far less legible. The
+   * wrapper-based anchor expresses the same signal directly: "user is
+   * approaching the end of the current batch".
+   *
+   * Invariants preserved:
+   *   - Exactly ONE anticipatory hidden prepare in flight (no mount, no
+   *     gate, no ScrollTrigger for later projects before their click).
+   *   - The hidden <video> + <link rel="preload"> are the only DOM
+   *     additions — same lightweight mechanism the gates already use
+   *     internally for in-batch transitions.
+   *   - Subscription is kept alive until visibleCount changes or hasMore
+   *     flips. When the new intro eventually mounts on Load More click,
+   *     its own useVideoReadyGate `subscribe` joins the already-warm
+   *     entry by URL (entries are keyed by resolved href).
    *
    * Timing in practice:
-   *   - visibleCount=2 (initial): triggers when activeIndex reaches 1
-   *     (Bekish) → warms Adma 527 (project index 2) several seconds
-   *     before the user reaches the Load more button.
-   *   - visibleCount=4 (after click 1): triggers when activeIndex
-   *     reaches 3 (Adma 514) → warms Dusk (project index 4).
+   *   - visibleCount=2 (initial): anchor on Bekish wrapper, fires at
+   *     scrollY ≈ 300vh → warms Adma 527 (next slot).
+   *   - visibleCount=4 (after click 1): anchor on Adma 514 wrapper,
+   *     fires roughly mid-Adma 527 scrub → warms Dusk.
    *   - visibleCount=5 (after click 2): hasMore=false, no anticipatory
    *     work (FinalSection has no video).
    */
   useEffect(() => {
     if (!hasMore) return;
-    if (activeIndex < visibleCount - 1) return;
     const nextProject = MOBILE_VIDEO_PROJECTS[visibleCount];
     if (!nextProject) return;
-    const { subscribe } = acquireMobileVideoPrepare(nextProject.videoSrc);
-    const unsubscribe = subscribe(() => {
-      /* hold the entry alive; snapshot updates are not consumed here */
-    });
-    return unsubscribe;
-  }, [activeIndex, visibleCount, hasMore]);
+    const anchor = document.querySelector<HTMLElement>(
+      "[data-mobile-prefetch-anchor='true']",
+    );
+    if (!anchor) return;
+
+    let cleanup: (() => void) | null = null;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry?.isIntersecting) return;
+        if (cleanup) return; /* idempotent — already started */
+        const { subscribe } = acquireMobileVideoPrepare(
+          nextProject.videoSrc,
+        );
+        cleanup = subscribe(() => {
+          /* hold the entry alive; snapshot updates not consumed here */
+        });
+      },
+      { rootMargin: "0px 0px 100% 0px" },
+    );
+    observer.observe(anchor);
+
+    return () => {
+      observer.disconnect();
+      cleanup?.();
+    };
+  }, [visibleCount, hasMore]);
 
   return (
     <>
@@ -213,9 +253,23 @@ export default function MobileVideoJourney() {
           !isUnlocked &&
           (project.index === activeIndex ||
             project.index === activeIndex + 1);
+        /**
+         * Geometric anchor for the next-batch anticipatory prepare (see
+         * the dedicated `useEffect` below). Tagged on the LAST visible
+         * project wrapper while `hasMore` is true so an IO with bottom
+         * `rootMargin` can fire prep as the user APPROACHES the end of
+         * the current batch — not only once they have reached it.
+         */
+        const isPrefetchAnchor =
+          hasMore && project.index === visibleCount - 1;
 
         return (
-          <div key={project.slug}>
+          <div
+            key={project.slug}
+            data-mobile-prefetch-anchor={
+              isPrefetchAnchor ? "true" : undefined
+            }
+          >
             <MobileProjectIntro
               projectIndex={project.index}
               title={project.title}
