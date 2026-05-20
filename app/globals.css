@@ -504,6 +504,79 @@ body {
     cursor: pointer;
   }
 
+  /*
+   * Progressive disclosure "Load more" CTA between mobile batches.
+   * Sober, BMC-aligned: thin cream stroke, uppercase tracking, subtle
+   * divider line for visual rhythm. The whole section is its own block
+   * (not inside a video section) so it never interferes with scroll
+   * triggers or sticky video framing.
+   */
+  .mobile-load-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    padding: clamp(3rem, 12vw, 5rem) clamp(1.25rem, 5vw, 2rem);
+    background: #050505;
+  }
+
+  .mobile-load-more__inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+    width: 100%;
+    max-width: 22rem;
+    text-align: center;
+    animation: mobile-intro-enter 0.6s ease-out both;
+  }
+
+  .mobile-load-more__eyebrow {
+    margin: 0;
+    font-size: 0.58rem;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: rgba(245, 240, 230, 0.38);
+  }
+
+  .mobile-load-more__btn {
+    appearance: none;
+    -webkit-appearance: none;
+    padding: 0.95rem 1.75rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: rgba(245, 240, 230, 0.92);
+    background: transparent;
+    border: 1px solid rgba(245, 240, 230, 0.28);
+    border-radius: 999px;
+    cursor: pointer;
+    transition:
+      border-color 0.5s ease,
+      color 0.5s ease,
+      opacity 0.3s ease;
+  }
+
+  .mobile-load-more__btn:hover,
+  .mobile-load-more__btn:focus-visible {
+    border-color: rgba(245, 240, 230, 0.6);
+    color: rgba(245, 240, 230, 1);
+    outline: none;
+  }
+
+  .mobile-load-more__btn:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+
+  .mobile-load-more__hint {
+    margin: 0;
+    font-size: 0.55rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: rgba(245, 240, 230, 0.42);
+  }
+
   .video-scroll-experience .frame-text-layer {
     padding-bottom: max(
       clamp(3.5rem, 12vw, 5rem),

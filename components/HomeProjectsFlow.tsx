@@ -1,5 +1,6 @@
 "use client";
 
+import FinalSection from "@/components/FinalSection";
 import FrameExperience from "@/components/FrameExperience";
 import MobileVideoJourney from "@/components/MobileVideoJourney";
 import TransitionSection from "@/components/TransitionSection";
@@ -11,8 +12,11 @@ import { DUSK_EXPERIENCE } from "@/lib/experiences/dusk";
 import { useIsMobileViewport } from "@/lib/use-mobile-viewport";
 
 /**
- * Home projects — desktop: frames + transition sections (unchanged).
- * Mobile: intro screens + video scroll journey + progress bar.
+ * Home projects — desktop: frames + transition sections + FinalSection
+ * (unchanged behaviour). Mobile: intro screens + video scroll journey +
+ * progress bar, with progressive disclosure batches. FinalSection is
+ * rendered by `MobileVideoJourney` itself once all batches are revealed,
+ * so it must NOT also be rendered here on the mobile branch.
  */
 export default function HomeProjectsFlow() {
   const isMobile = useIsMobileViewport();
@@ -62,6 +66,7 @@ export default function HomeProjectsFlow() {
         ariaLabel="Before Dusk"
       />
       <FrameExperience config={DUSK_EXPERIENCE} />
+      <FinalSection />
     </>
   );
 }

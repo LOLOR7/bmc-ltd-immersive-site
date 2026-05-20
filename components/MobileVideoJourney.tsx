@@ -1,10 +1,27 @@
 "use client";
 
+import FinalSection from "@/components/FinalSection";
+import MobileLoadMore from "@/components/MobileLoadMore";
 import MobileProjectIntro from "@/components/MobileProjectIntro";
 import MobileProjectProgress from "@/components/MobileProjectProgress";
 import VideoScrollExperience from "@/components/VideoScrollExperience";
 import { MOBILE_VIDEO_PROJECTS } from "@/lib/mobile-video-projects";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useCallback, useEffect, useState } from "react";
+
+/**
+ * Progressive disclosure batches for mobile only:
+ *   - INITIAL_VISIBLE projects mount on first render
+ *   - LOAD_MORE_STEP additional projects mount per "Load more" click
+ * Total batches with 5 projects: 2 → 4 → 5 (FinalSection follows).
+ *
+ * The goal is to keep <video> / ScrollTrigger / IntersectionObserver
+ * pressure low on weak Safari/iOS — non-visible projects are NOT mounted
+ * (zero DOM, zero observers, zero gates), so the lazy strict prev/active/
+ * next window naturally clamps to the visible slice as well.
+ */
+const INITIAL_VISIBLE = 2;
+const LOAD_MORE_STEP = 2;
 
 export default function MobileVideoJourney() {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -12,6 +29,12 @@ export default function MobileVideoJourney() {
   const [unlockedProjects, setUnlockedProjects] = useState<Set<number>>(
     () => new Set(),
   );
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
+
+  const totalProjects = MOBILE_VIDEO_PROJECTS.length;
+  const visibleProjects = MOBILE_VIDEO_PROJECTS.slice(0, visibleCount);
+  const hasMore = visibleCount < totalProjects;
+  const remaining = totalProjects - visibleCount;
 
   const handleGateActiveChange = useCallback(
     (projectIndex: number, active: boolean) => {
@@ -40,6 +63,27 @@ export default function MobileVideoJourney() {
     // scrub could nudge `video.currentTime` mid-transition.
   }, []);
 
+  const handleLoadMore = useCallback(() => {
+    setVisibleCount((prev) => {
+      const next = Math.min(totalProjects, prev + LOAD_MORE_STEP);
+      if (next === prev) return prev;
+      /**
+       * Defer ScrollTrigger.refresh until after the new sections have
+       * committed and painted. Double rAF guarantees the layout pass has
+       * run so any newly-mounted scrub triggers can compute correct
+       * start/end positions. Safe here (no active gate, no scroll lock,
+       * no engaged scrub being nudged), unlike the previous `handleUnlocked`
+       * site which we deliberately stripped of refresh().
+       */
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          ScrollTrigger.refresh();
+        });
+      });
+      return next;
+    });
+  }, [totalProjects]);
+
   useEffect(() => {
     const sections = document.querySelectorAll<HTMLElement>(
       "[data-mobile-project-index]",
@@ -56,6 +100,10 @@ export default function MobileVideoJourney() {
      * stuck the Bekish gate on a flicker. Tracking by element identity
      * (`${section-type}:${index}`) decouples the two and keeps the index
      * derivation correct.
+     *
+     * Effect re-runs on `visibleCount` change so newly-mounted batch
+     * sections are observed too. Disconnecting the previous observer is
+     * safe because all sections are re-queried on the next pass.
      */
     type RatioEntry = { index: number; ratio: number };
     const ratios = new Map<string, RatioEntry>();
@@ -95,7 +143,7 @@ export default function MobileVideoJourney() {
 
     sections.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, []);
+  }, [visibleCount]);
 
   return (
     <>
@@ -103,7 +151,7 @@ export default function MobileVideoJourney() {
         activeIndex={activeIndex}
         isGateLoading={gateLoadingIndex === activeIndex}
       />
-      {MOBILE_VIDEO_PROJECTS.map((project) => {
+      {visibleProjects.map((project) => {
         const isUnlocked = unlockedProjects.has(project.index);
         /**
          * Lazy strict — load video src only for prev / active / next
@@ -153,6 +201,11 @@ export default function MobileVideoJourney() {
           </div>
         );
       })}
+      {hasMore ? (
+        <MobileLoadMore remaining={remaining} onLoadMore={handleLoadMore} />
+      ) : (
+        <FinalSection />
+      )}
     </>
   );
 }
