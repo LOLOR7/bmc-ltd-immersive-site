@@ -6,7 +6,6 @@ import MobileProjectIntro from "@/components/MobileProjectIntro";
 import MobileProjectProgress from "@/components/MobileProjectProgress";
 import VideoScrollExperience from "@/components/VideoScrollExperience";
 import { MOBILE_VIDEO_PROJECTS } from "@/lib/mobile-video-projects";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useCallback, useEffect, useState } from "react";
 
 /**
@@ -64,24 +63,16 @@ export default function MobileVideoJourney() {
   }, []);
 
   const handleLoadMore = useCallback(() => {
-    setVisibleCount((prev) => {
-      const next = Math.min(totalProjects, prev + LOAD_MORE_STEP);
-      if (next === prev) return prev;
-      /**
-       * Defer ScrollTrigger.refresh until after the new sections have
-       * committed and painted. Double rAF guarantees the layout pass has
-       * run so any newly-mounted scrub triggers can compute correct
-       * start/end positions. Safe here (no active gate, no scroll lock,
-       * no engaged scrub being nudged), unlike the previous `handleUnlocked`
-       * site which we deliberately stripped of refresh().
-       */
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          ScrollTrigger.refresh();
-        });
-      });
-      return next;
-    });
+    setVisibleCount((prev) => Math.min(totalProjects, prev + LOAD_MORE_STEP));
+    // Note: no ScrollTrigger.refresh() here. Each newly-mounted
+    // `VideoScrollExperience` calls its own `ScrollTrigger.refresh()`
+    // inside `bindScroll()` once its video metadata is ready, and the
+    // existing triggers above the button are unaffected by content
+    // appended below them (their cached start/end positions stay
+    // valid). An external refresh also risks amplifying the perceived
+    // micro-jump on iOS Safari at the exact moment the button is
+    // replaced by full-sized intro/video sections (same lesson as the
+    // `handleUnlocked` fix).
   }, [totalProjects]);
 
   useEffect(() => {

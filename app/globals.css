@@ -518,6 +518,16 @@ body {
     min-height: 60vh;
     padding: clamp(3rem, 12vw, 5rem) clamp(1.25rem, 5vw, 2rem);
     background: #050505;
+    /*
+     * Opt this section out of the browser's scroll-anchoring algorithm.
+     * Without this, iOS Safari 16+ (and Chrome) picks the button as the
+     * scroll anchor when the user is viewing it. When the click removes
+     * the button and inserts new intro/video sections in its place, the
+     * anchor is lost and the browser shifts `window.scrollY` a few dozen
+     * pixels to "preserve" visual stability — perceived as a mini jump.
+     * Removing it from anchor candidates means: anchor lost == no shift.
+     */
+    overflow-anchor: none;
   }
 
   .mobile-load-more__inner {
