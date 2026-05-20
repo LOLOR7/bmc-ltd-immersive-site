@@ -5,6 +5,7 @@ import MobileLoadMore from "@/components/MobileLoadMore";
 import MobileProjectIntro from "@/components/MobileProjectIntro";
 import MobileProjectProgress from "@/components/MobileProjectProgress";
 import VideoScrollExperience from "@/components/VideoScrollExperience";
+import { acquireMobileVideoPrepare } from "@/lib/mobile-video-readiness";
 import { MOBILE_VIDEO_PROJECTS } from "@/lib/mobile-video-projects";
 import { useCallback, useEffect, useState } from "react";
 
@@ -135,6 +136,54 @@ export default function MobileVideoJourney() {
     sections.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, [visibleCount]);
+
+  /**
+   * Anticipatory prepare of the FIRST project of the next batch.
+   *
+   * Why this exists: progressive disclosure intentionally leaves later
+   * projects unmounted until the user clicks "Explore more residences",
+   * which keeps initial mobile pressure low (only 2 <video> elements +
+   * 2 ScrollTriggers + 2 gates on first paint). Side effect: the first
+   * project of each new batch has zero buffering head start at click
+   * time — its <video src> only attaches AT mount, so on weak networks
+   * the gate engages while the first range request is still in flight,
+   * which the user reads as a micro freeze / mini chargement.
+   *
+   * Compensation: as soon as the user reaches the LAST visible project
+   * (activeIndex >= visibleCount - 1), we open a hidden prepare entry
+   * for project[visibleCount] (the next batch's first slot) — same
+   * lightweight mechanism that `MobileProjectIntro` uses through its
+   * `useVideoReadyGate` hook. When the new intro later mounts on Load
+   * more click, its own subscription joins the already-warmed entry
+   * instead of cold-starting a range request.
+   *
+   * Bounded: exactly one anticipatory <video hidden> + <link rel="preload">
+   * at peak, only the very next slot in sequence. This mirrors the
+   * adjacency window we already maintain for in-batch transitions
+   * (Bekish pre-prepped while Adma Cliff is active, Adma 514 pre-prepped
+   * while Adma 527 is active, etc.) and preserves the disclosure benefit
+   * (later projects still don't mount their DOM / ScrollTrigger / gate).
+   *
+   * Timing in practice:
+   *   - visibleCount=2 (initial): triggers when activeIndex reaches 1
+   *     (Bekish) → warms Adma 527 (project index 2) several seconds
+   *     before the user reaches the Load more button.
+   *   - visibleCount=4 (after click 1): triggers when activeIndex
+   *     reaches 3 (Adma 514) → warms Dusk (project index 4).
+   *   - visibleCount=5 (after click 2): hasMore=false, no anticipatory
+   *     work (FinalSection has no video).
+   */
+  useEffect(() => {
+    if (!hasMore) return;
+    if (activeIndex < visibleCount - 1) return;
+    const nextProject = MOBILE_VIDEO_PROJECTS[visibleCount];
+    if (!nextProject) return;
+    const { subscribe } = acquireMobileVideoPrepare(nextProject.videoSrc);
+    const unsubscribe = subscribe(() => {
+      /* hold the entry alive; snapshot updates are not consumed here */
+    });
+    return unsubscribe;
+  }, [activeIndex, visibleCount, hasMore]);
 
   return (
     <>
